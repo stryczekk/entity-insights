@@ -1,0 +1,297 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>entity-insights browser test</title>
+<style>
+  body { background: #111820; margin: 0; padding: 16px; font-family: Roboto, sans-serif;
+         --primary-text-color: #e1e6ee; --secondary-text-color: #8d9aae; --divider-color: #2a3547;
+         --card-background-color: #1b2433; --primary-color: #03a9f4; --text-primary-color: #fff; }
+  #results { color: #c3cfdf; white-space: pre; }
+</style>
+</head>
+<body>
+<home-assistant></home-assistant>
+<pre id="results">RUNNING</pre>
+<script type="module">
+import { buildHome, fakeHass } from "./fixture.js";
+
+const params = new URLSearchParams(location.search);
+const shot = params.get("shot");
+const lang = params.get("lang") || "en";
+// a clean start: no remembered range from an earlier run
+localStorage.clear();
+if (shot) localStorage.setItem("entity-insights-range", params.get("range") || "14");
+
+// The page stands in for Home Assistant: <home-assistant> with hass, and it
+// records the entity dialogs that reach it (not taken over by the module).
+const home = buildHome(shot ? lang : "en");
+const ha = document.querySelector("home-assistant");
+const reached = [];
+ha.addEventListener("hass-more-info", (e) => reached.push(e.detail.entityId));
+ha.hass = fakeHass(home, lang);
+
+await import("../../entity-insights.js");
+const api = window.entityInsights;
+
+const results = [];
+const check = (name, ok, detail = "") => results.push({ name, ok: !!ok, detail: ok ? "" : String(detail) });
+const tick = (ms = 30) => new Promise((r) => setTimeout(r, ms));
+const dialog = () => api.dialog;
+const root = () => dialog().shadowRoot;
+const $ = (sel) => root().querySelector(sel);
+const $$ = (sel) => [...root().querySelectorAll(sel)];
+const text = (sel) => ($(sel) || {}).textContent || "";
+async function loaded() {
+  for (let i = 0; i < 100; i++) {
+    const st = $(".stats");
+    if (st && !st.classList.contains("empty") && !st.classList.contains("loading")) return true;
+    await tick();
+  }
+  return false;
+}
+async function counted() {
+  for (let i = 0; i < 100 && root().textContent.includes("counting"); i++) await tick();
+}
+
+if (shot) {
+  const hass = fakeHass(home, lang);
+  const req = { light: { entities: ["light.dining_small", "light.dining_large"], name: lang === "pl" ? "Jadalnia" : "Dining room",
+                         labels: ["x1", "x3"] },
+                lamp: "light.living_room_lamp",
+                cover: "cover.living_room" }[shot];
+  api.open(req, hass);
+  await loaded();
+  await counted();
+  document.getElementById("results").remove();
+} else {
+  // 1. On/off: a light, English, InfluxDB present -> all six ranges
+  let hass = fakeHass(home, "en");
+  check("opens for a light", api.open("light.kitchen_ceiling", hass) === true);
+  check("title from friendly_name", text("#title") === "Kitchen ceiling", text("#title"));
+  check("six range chips with InfluxDB", $$(".chips button").length === 6, $$(".chips button").length);
+  check("14 days selected by default", text(".chips button.sel") === "14d" && $(".chips button.sel").title === "14 days",
+        text(".chips button.sel"));
+  check("history loads", await loaded());
+  // the recorder keeps 10 days by default: 14 days and the 14 before come from InfluxDB
+  const p14 = hass.calls.find((c) => c.path);
+  check("14 days (+14 to compare) from InfluxDB past the recorder", p14 && /days=27\./.test(p14.path), JSON.stringify(hass.calls.slice(0, 3)));
+  check("sums: hours lit, average, change", $$(".sums div").length === 3 && /h|min/.test(text(".sums b")), text(".sums"));
+  check("bars per day for 14 days", $$(".bars i").length === 14, $$(".bars i").length);
+  check("24 hour-of-day columns", $$(".hours i").length === 24, $$(".hours i").length);
+  check("fun facts listed", $$(".facts div").length >= 5, $$(".facts div").length);
+  await counted();
+  check("place in the house among 6 lights", /Place in the house[\s\S]*\d of 6/.test(text(".facts")), text(".facts"));
+  check("recent sessions listed", $$(".ev").length > 0, $$(".ev").length);
+  check("subscribed to state changes", hass.calls.some((c) => c.subscribe === "state_changed"));
+
+  // switch -> service call, no real device
+  $(".switch").click();
+  const svc = hass.calls.filter((c) => c.service);
+  check("switch calls homeassistant.turn_on/off for this entity",
+        svc.length === 1 && svc[0].domain === "homeassistant" && svc[0].data.entity_id === "light.kitchen_ceiling", JSON.stringify(svc));
+
+  // 3 months -> InfluxDB proxy
+  [...$$(".chips button")].find((b) => b.dataset.r === "90").click();
+  check("old stats kept dimmed while loading", !!$(".stats.loading") || await loaded());
+  check("3 months load", await loaded());
+  const api90 = hass.calls.filter((c) => c.path && c.path.startsWith("influx_proxy/states"));
+  check("3 months from influx_proxy/states, no attributes for lights", api90.length >= 1 && !api90[0].path.includes("attributes"),
+        JSON.stringify(api90.map((c) => c.path)));
+  check("bars per week for 3 months", $$(".bars i").length >= 13 && $$(".bars i").length <= 14, $$(".bars i").length);
+  check("3 months compared with the 90 days before", /^[+-]\d+%$/.test($$(".sums b")[2].textContent), $$(".sums b")[2].textContent);
+  check("range remembered", localStorage.getItem("entity-insights-range") === "90");
+  // a phone: the panel of a 360 px wide screen
+  $("#panel").style.maxWidth = "328px";
+  const chipsFit = $$(".chips button").every((b) => b.scrollWidth <= b.clientWidth + 1);
+  check("range chips fit on a phone (English)", chipsFit, $$(".chips button").map((b) => b.textContent + ":" + b.scrollWidth + "/" + b.clientWidth).join(","));
+  $("#panel").style.maxWidth = "";
+  localStorage.removeItem("entity-insights-range");
+
+  // Escape closes and unsubscribes
+  window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+  await tick();
+  check("Escape closes", !dialog().isOpen);
+  check("unsubscribed on close", hass.calls.some((c) => c.unsubscribe === "state_changed"));
+
+  // 2. Two circuits of one lamp + dimmable light
+  hass = fakeHass(home, "en");
+  api.open({ entities: ["light.dining_small", "light.dining_large"], name: "Dining room", labels: ["x1", "x3"] }, hass);
+  await loaded();
+  check("group: custom name", text("#title") === "Dining room", text("#title"));
+  check("group: one switch per circuit with labels", $$(".switch").length === 2 && $$(".row .name")[1].textContent.startsWith("x3"),
+        $$(".row .name").map((e) => e.textContent).join("|"));
+  api.close();
+
+  hass = fakeHass(home, "en");
+  api.open("light.living_room_lamp", hass);
+  await loaded();
+  const slider = $(".dim input");
+  check("brightness slider for a dimmable light", !!slider);
+  if (slider) {
+    slider.value = "40";
+    slider.dispatchEvent(new Event("input"));
+    slider.dispatchEvent(new Event("change"));
+    const c = hass.calls.find((x) => x.service === "turn_on" && x.domain === "light");
+    check("slider calls light.turn_on with brightness_pct", c && c.data.brightness_pct === 40 && c.data.entity_id === "light.living_room_lamp",
+          JSON.stringify(c));
+  }
+  api.close();
+
+  // 3. Cover: controls, who moves it, positions requested (today: recorder)
+  localStorage.setItem("entity-insights-range", "today");
+  dialog()._rangeKey = null;
+  hass = fakeHass(home, "en");
+  check("opens for a cover", api.open("cover.living_room", hass) === true);
+  check("cover history loads", await loaded());
+  check("open / stop / close buttons", $$(".cv-btns button").length === 3, $$(".cv-btns button").length);
+  const hc = hass.calls.find((c) => c.type === "history/history_during_period" && c.entity_ids.join() === "cover.living_room");
+  check("cover history with attributes (positions)", hc && hc.minimal_response === false && hc.no_attributes === false, JSON.stringify(hc));
+  check("logbook asked for the cover", hass.calls.some((c) => c.type === "logbook/get_events" && c.entity_ids[0] === "cover.living_room"));
+  [...$$(".chips button")].find((b) => b.dataset.r === "7").click();
+  await loaded();
+  const facts = text(".facts");
+  check("who moves it: automation by name", facts.includes("Morning covers") || facts.includes("Evening covers"), facts);
+  check("cover state text", /Open|Closed|closed/.test(text(".cv-now")), text(".cv-now"));
+  for (const b of $$(".cv-btns button")) b.click();
+  const cs = hass.calls.filter((c) => c.domain === "cover").map((c) => c.service);
+  check("buttons call open / stop / close", cs.join(",") === "open_cover,stop_cover,close_cover", cs.join(","));
+  const cvs = $(".cv-slide input");
+  cvs.value = "30";
+  cvs.dispatchEvent(new Event("change"));
+  const pc = hass.calls.find((c) => c.service === "set_cover_position");
+  check("slider sets the position", pc && pc.data.position === 30, JSON.stringify(pc));
+  [...$$(".chips button")].find((b) => b.dataset.r === "90").click();
+  await loaded();
+  const ac = hass.calls.find((c) => c.path && c.path.startsWith("influx_proxy/states"));
+  check("cover 3 months asks for current_position", ac && ac.path.includes("&attributes=current_position"), ac && ac.path);
+  localStorage.removeItem("entity-insights-range");
+  api.close();
+
+  // 4. Polish
+  hass = fakeHass(home, "pl");
+  api.open("light.kitchen_ceiling", hass);
+  await loaded();
+  check("Polish: chips", $$(".chips button").map((b) => b.textContent).join(",") === "Dziś,Wczoraj,7 dni,14 dni,30 dni,3 mies.",
+        $$(".chips button").map((b) => b.textContent).join(","));
+  $("#panel").style.maxWidth = "328px";
+  check("range chips fit on a phone (Polish)", $$(".chips button").every((b) => b.scrollWidth <= b.clientWidth + 1),
+        $$(".chips button").map((b) => b.textContent + ":" + b.scrollWidth + "/" + b.clientWidth).join(","));
+  $("#panel").style.maxWidth = "";
+  check("range kept between dialogs", text(".chips button.sel") === "3 mies.", text(".chips button.sel"));
+  check("Polish: light wording", text(".sums").includes("świeciła"), text(".sums"));
+  check("Polish: entity settings button", text("#foot") === "Ustawienia encji", text("#foot"));
+  api.close();
+  hass = fakeHass(home, "pl");
+  api.open("cover.living_room", hass);
+  await loaded();
+  check("Polish: cover wording", text(".facts").includes("Kto rusza"), text(".facts"));
+  api.close();
+
+  // 5. Without InfluxDB: only what the recorder keeps (10 days by default)
+  hass = fakeHass(home, "en", { influx: false });
+  api.open("light.hallway", hass);
+  await loaded();
+  check("without InfluxDB: today, yesterday, 7 days", $$(".chips button").map((b) => b.dataset.r).join(",") === "today,yesterday,7",
+        $$(".chips button").map((b) => b.dataset.r).join(","));
+  api.close();
+
+  // 5b. Comparison with the 7 days before: past the recorder's 10 days it
+  // needs InfluxDB; without it there is nothing to compare with
+  localStorage.setItem("entity-insights-range", "7");
+  dialog()._rangeKey = null;
+  hass = fakeHass(home, "en");
+  api.open("light.kitchen_ceiling", hass);
+  await loaded();
+  check("7 days compared with the 7 before (InfluxDB)", /^[+-]\d+%$/.test($$(".sums b")[2].textContent) && hass.calls.some((c) => c.path),
+        $$(".sums b")[2].textContent);
+  api.close();
+  hass = fakeHass(home, "en", { influx: false });
+  api.open("light.kitchen_ceiling", hass);
+  await loaded();
+  check("no comparison when the recorder lost the days before", $$(".sums b")[2].textContent === "—", $$(".sums b")[2].textContent);
+  api.close();
+  localStorage.removeItem("entity-insights-range");
+  dialog()._rangeKey = null;
+
+  // 6. Escaping: HTML in names and labels stays text
+  hass = fakeHass(home, "en");
+  hass.states["light.hallway"].attributes.friendly_name = '<img src=x onerror="window.__xss=1">';
+  hass.states["person.anna"].attributes.friendly_name = '<b id="xss">Anna</b>';
+  api.open({ entities: ["light.hallway", "light.porch"], labels: ['<img src=x onerror="window.__xss=2">', "two"] }, hass);
+  await loaded();
+  api.close();
+  api.open("cover.bedroom", hass);
+  await loaded();
+  check("no script from names or labels", !window.__xss && !root().querySelector("img") && !root().getElementById("xss"));
+  api.close();
+
+  // 7. Takeover of the entity dialog, only for the domains asked for
+  const card = document.createElement("entity-insights");
+  card.setConfig({ more_info: ["light"] });
+  document.body.appendChild(card);
+  card.hass = ha.hass;
+  const fire = (id) => {
+    const ev = new CustomEvent("hass-more-info", { detail: { entityId: id }, bubbles: true, composed: true, cancelable: true });
+    ha.dispatchEvent(ev);
+    return ev;
+  };
+  reached.length = 0;
+  fire("light.porch");
+  check("takeover: a light opens the insights", dialog().isOpen && text("#title") === "Porch" && reached.length === 0, reached.join());
+  $("#foot button").click();
+  check("'Entity settings' reaches Home Assistant's own dialog", !dialog().isOpen && reached.join() === "light.porch", reached.join());
+  reached.length = 0;
+  fire("cover.office");
+  check("takeover: other domains untouched", !dialog().isOpen && reached.join() === "cover.office", reached.join());
+  card.remove();
+  reached.length = 0;
+  fire("light.porch");
+  check("takeover off when the card leaves the page", !dialog().isOpen && reached.join() === "light.porch", reached.join());
+
+  // 7b. A sensor without long-term-chart-card: Home Assistant's own dialog, at once
+  const card2 = document.createElement("entity-insights");
+  card2.setConfig({ more_info: ["sensor"] });
+  document.body.appendChild(card2);
+  reached.length = 0;
+  const se = fire("sensor.living_room_temperature");
+  check("sensor without the chart card: not taken over", !se.defaultPrevented && !dialog().isOpen &&
+        reached.join() === "sensor.living_room_temperature", reached.join());
+  card2.remove();
+  reached.length = 0;
+  window.dispatchEvent(new CustomEvent("ll-custom", { detail: { entity_insights: { entity: "sensor.living_room_temperature" } } }));
+  check("fire-dom-event for it: Home Assistant's own dialog", !dialog().isOpen && reached.join() === "sensor.living_room_temperature", reached.join());
+
+  // 7c. Automation names that are also Object properties
+  hass = fakeHass(home, "en");
+  for (const e of home.covers["cover.office"].log) if (!e.context_event_type) Object.assign(e, { context_event_type: "automation_triggered", context_name: "constructor" });
+  localStorage.setItem("entity-insights-range", "7");
+  dialog()._rangeKey = null;
+  api.open("cover.office", hass);
+  await loaded();
+  check("automation called 'constructor' counted like any other", /constructor · 100%/.test(text(".facts")), text(".facts"));
+  api.close();
+  localStorage.removeItem("entity-insights-range");
+  dialog()._rangeKey = null;
+
+  // 8. fire-dom-event from a card
+  window.dispatchEvent(new CustomEvent("ll-custom", { detail: { entity_insights: { entity: "switch.coffee_maker" } } }));
+  check("fire-dom-event opens it", dialog().isOpen && text("#title") === "Coffee maker", text("#title"));
+  check("switch domain wording", (await loaded()) && text(".sums").includes("on ·"), text(".sums"));
+  api.close();
+  check("invalid entity ids refused", api.open("light.x; drop", ha.hass) === false && api.open({ entity: "<b>" }, ha.hass) === false);
+
+  // 9. openCustom for content from another card
+  const body = api.openCustom("Custom", (b) => { b.textContent = "hello"; });
+  check("openCustom renders the given content", dialog().isOpen && body.textContent === "hello" && text("#title") === "Custom");
+  api.close();
+
+  const failed = results.filter((r) => !r.ok);
+  const out = results.map((r) => (r.ok ? "PASS " : "FAIL ") + r.name + (r.detail ? "  [" + r.detail.slice(0, 300) + "]" : "")).join("\n");
+  document.getElementById("results").textContent = out + "\n" +
+    (failed.length ? "FAILED " + failed.length + " of " + results.length : "OK " + results.length + " checks passed");
+}
+</script>
+</body>
+</html>
