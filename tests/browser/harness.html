@@ -84,7 +84,8 @@ if (shot) {
   await counted();
   check("place in the house among 6 lights", /Place in the house[\s\S]*\d of 6/.test(text(".facts")), text(".facts"));
   check("recent sessions listed", $$(".ev").length > 0, $$(".ev").length);
-  check("subscribed to state changes", hass.calls.some((c) => c.subscribe === "state_changed"));
+  check("subscribed to its own entities only", hass.calls.some((c) => c.subscribe === "subscribe_entities" && c.entity_ids && c.entity_ids.length >= 1)
+    && !hass.calls.some((c) => c.subscribe === "state_changed"));
 
   // switch -> service call, no real device
   $(".switch").click();
@@ -113,7 +114,7 @@ if (shot) {
   window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
   await tick();
   check("Escape closes", !dialog().isOpen);
-  check("unsubscribed on close", hass.calls.some((c) => c.unsubscribe === "state_changed"));
+  check("unsubscribed on close", hass.calls.some((c) => c.unsubscribe === "subscribe_entities"));
 
   // 2. Two circuits of one lamp + dimmable light
   hass = fakeHass(home, "en");

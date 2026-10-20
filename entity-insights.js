@@ -29,7 +29,7 @@
 // See README.md for all options.
 
 export const NAME = "entity-insights";
-export const VERSION = "0.9.0";
+export const VERSION = "0.9.1";
 
 // ---- Strings -----------------------------------------------------------
 // "{x}" is replaced from vars. A key "light.xyz" overrides "xyz" for lights
@@ -544,8 +544,19 @@ export class EntityInsightsDialog extends HTMLElement {
     this._show();
     this._view();
     this._fetch();
-    this._timer = setInterval(() => this._fetch(), 60000);
+    this._schedule();
     return true;
+  }
+
+  // Refresh the history as often as the range can change: today every
+  // minute, longer ranges every 5 minutes, yesterday never - a 3-month range
+  // from InfluxDB is not fetched again every minute.
+  _schedule() {
+    if (this._timer) clearInterval(this._timer);
+    this._timer = null;
+    const k = this._range().k;
+    if (k === "yesterday") return;
+    this._timer = setInterval(() => this._fetch && this._fetch(), k === "today" ? 60000 : 300000);
   }
 
   // A dialog with content from another card: render(body) draws it now and
@@ -602,19 +613,22 @@ export class EntityInsightsDialog extends HTMLElement {
   }
 
   // Without a card feeding hass, follow the state changes of our entities
-  // and take the fresh hass from the page.
+  // (subscribe_entities: filtered by Home Assistant, only these entities come
+  // over the wire) and take the fresh hass from the page.
   _follow() {
     const conn = this._hass && this._hass.connection;
     const cur = this._cur;
     if (!conn || !cur || !cur.ids) return;
-    this._unsub = conn.subscribeEvents((ev) => {
-      if (this._cur !== cur || !cur.ids.includes(ev.data && ev.data.entity_id)) return;
+    let first = true;
+    this._unsub = conn.subscribeMessage(() => {
+      if (first) { first = false; return; }  // the first message is the current state, already shown
+      if (this._cur !== cur) return;
       setTimeout(() => {
         const ha = document.querySelector("home-assistant");
         if (ha && ha.hass) this._hass = ha.hass;
         if (this._cur === cur && this._view) this._view();
       }, 120);
-    }, "state_changed").catch(() => null);
+    }, { type: "subscribe_entities", entity_ids: cur.ids }).catch(() => null);
   }
 
   _footStandard(id) {
@@ -666,6 +680,7 @@ export class EntityInsightsDialog extends HTMLElement {
         this._viewKey = null;
         this._view();
         this._fetch();
+        if (this._fetch) this._schedule();
       });
     }
   }

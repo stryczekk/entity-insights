@@ -152,6 +152,10 @@ export function fakeHass(home, language, { influx = true, now = Date.now() } = {
     config: { components: influx ? ["influx_proxy", "history", "logbook"] : ["history", "logbook"], time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone },
     connection: {
       subscribeEvents: async (cb, type) => { calls.push({ subscribe: type }); return () => calls.push({ unsubscribe: type }); },
+      subscribeMessage: async (cb, msg) => {
+        calls.push({ subscribe: msg.type, entity_ids: msg.entity_ids });
+        return () => calls.push({ unsubscribe: msg.type });
+      },
     },
     async callWS(msg) {
       calls.push(msg);
