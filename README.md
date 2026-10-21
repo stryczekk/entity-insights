@@ -42,14 +42,20 @@ stay closed, who moves them — without building a single chart.
 
 ## Installation
 
-### HACS
+### HACS (recommended)
 
-[![Open your Home Assistant instance and open this repository inside HACS.][hacs-open-badge]][hacs-open]
+Entity Insights is in the HACS default store:
 
-1. Click the button above, or: HACS → ⋮ → **Custom repositories** → add
-   `https://github.com/stryczekk/entity-insights`, category **Dashboard**
-2. Install **Entity Insights**
-3. Refresh the browser (the resource is added by HACS)
+1. Open **HACS**, search for **Entity Insights** and download it — or click
+   the button to open it in HACS directly:
+
+   [![Open your Home Assistant instance and open this repository inside HACS.][hacs-open-badge]][hacs-open]
+
+2. Refresh the browser (the resource is added by HACS)
+
+Not found? Your HACS may not have refreshed its list yet: add it as a custom
+repository instead — HACS → ⋮ → **Custom repositories** →
+`https://github.com/stryczekk/entity-insights`, category **Dashboard**.
 
 ### Manual
 
@@ -144,7 +150,7 @@ MIT
 [hacs-open]: https://my.home-assistant.io/redirect/hacs_repository/?owner=stryczekk&repository=entity-insights&category=plugin
 [hacs-open-badge]: https://my.home-assistant.io/badges/hacs_repository.svg
 [hacs]: https://hacs.xyz
-[hacs-badge]: https://img.shields.io/badge/HACS-Custom-41BDF5.svg
+[hacs-badge]: https://img.shields.io/badge/HACS-Default-41BDF5.svg
 [validate]: https://github.com/stryczekk/entity-insights/actions/workflows/validate.yml
 [validate-badge]: https://github.com/stryczekk/entity-insights/actions/workflows/validate.yml/badge.svg
 [bmc]: https://buymeacoffee.com/stryczekk
