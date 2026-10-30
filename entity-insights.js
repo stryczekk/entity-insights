@@ -29,7 +29,7 @@
 // See README.md for all options.
 
 export const NAME = "entity-insights";
-export const VERSION = "0.9.1";
+export const VERSION = "0.10.0";
 
 // ---- Strings -----------------------------------------------------------
 // "{x}" is replaced from vars. A key "light.xyz" overrides "xyz" for lights
@@ -54,6 +54,7 @@ export const STRINGS = {
     f_longest: "Longest", date_from: "{date} from {t}", f_avg_one: "Average session",
     f_night: "Turned on at night (0–5)", not_once: "not once", f_dark_days: "Days never on", of: "{n} of {d}",
     f_rank: "Place in the house ({range})", counting: "counting…",
+    f_power: "Power", f_power_meter: "Power now (meter)", f_energy: "Energy ({range})",
     tl_today: "Today since midnight", tl_yesterday: "Yesterday",
     recent: "Recently turned on", is_on: "on", until: "until {t}", none_on: "Not on in this period.",
     yesterday_at: "yesterday {t}",
@@ -95,6 +96,7 @@ export const STRINGS = {
     f_night: "Włączenia w nocy (0–5)", "light.f_night": "Zapalenia w nocy (0–5)", not_once: "ani razu",
     f_dark_days: "Dni bez włączenia", "light.f_dark_days": "Dni bez świecenia", of: "{n} z {d}",
     f_rank: "Miejsce w domu ({range})", counting: "liczę…",
+    f_power: "Moc", f_power_meter: "Moc teraz (licznik)", f_energy: "Prąd ({range})",
     tl_today: "Dziś od północy", tl_yesterday: "Wczoraj",
     recent: "Ostatnie włączenia", "light.recent": "Ostatnie zapalenia", is_on: "włączone", "light.is_on": "świeci",
     until: "do {t}", none_on: "Nie było włączone w tym okresie.", "light.none_on": "Nie świeciła w tym okresie.",
@@ -380,7 +382,54 @@ export function parseRequest(x) {
     chart: x.chart && typeof x.chart === "object" ? x.chart : null,
     // the entities to rank against ("place in the house"); default: the domain
     rankWith: Array.isArray(x.rank_with) && x.rank_with.every(validEntityId) ? x.rank_with.slice() : null,
+    // energy and its cost: the power of each entity (W; one number for all, or one per entity) and the price
+    // of a kWh (a number, or a sensor with it) - else from configure() / the invisible card, or a meter
+    watts: wattsOf(x.watts, ids.length),
+    price: priceOf(x.price),
   };
+}
+
+const wattsOf = (w, n) => {
+  if (typeof w === "number" && w >= 0) return Array(n).fill(w);
+  if (Array.isArray(w) && w.length === n && w.every((v) => typeof v === "number" && v >= 0)) return w.slice();
+  return null;
+};
+const priceOf = (p) => (typeof p === "number" && p >= 0 ? p : typeof p === "string" && validEntityId(p) ? p : null);
+
+// Energy (Wh) of a lamp of `watts` between a and b from its state rows [{t, s, br}] (sorted): its time on,
+// a dimmable one scaled by its brightness (0-255) where the rows have it.
+export function energyWh(rows, a, b, now, watts, dim) {
+  let wh = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const x = rows[i], t0 = Math.max(x.t, a), t1 = Math.min(i + 1 < rows.length ? rows[i + 1].t : now, b);
+    if (t1 <= t0 || x.s !== "on") continue;
+    const k = dim && typeof x.br === "number" ? Math.max(0, Math.min(1, x.br / 255)) : 1;
+    wh += (watts * k * (t1 - t0)) / 3600e3;
+  }
+  return wh;
+}
+// Energy (Wh) measured by a power sensor (rows [{t, s}] in W, each holding until the next) between a and b
+export function meterWh(rows, a, b, now) {
+  let wh = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const v = Number(rows[i].s), t0 = Math.max(rows[i].t, a), t1 = Math.min(i + 1 < rows.length ? rows[i + 1].t : now, b);
+    if (t1 > t0 && isFinite(v) && v > 0) wh += (v * (t1 - t0)) / 3600e3;
+  }
+  return wh;
+}
+// The power sensor of an entity's own device (a smart plug, a lamp with a meter): only when that device has
+// no other entity of the same domain - one meter on a controller of 32 lamps does not measure one of them
+export function powerSensorOf(hass, id) {
+  const ents = hass && hass.entities, me = ents && ents[id];
+  if (!me || !me.device_id) return null;
+  const same = Object.values(ents).filter((e) => e.device_id === me.device_id);
+  const dom = id.split(".")[0];
+  if (same.filter((e) => e.entity_id.split(".")[0] === dom).length > 1) return null;
+  const m = same.find((e) => {
+    const s = e.entity_id.startsWith("sensor.") && hass.states[e.entity_id];
+    return s && s.attributes.device_class === "power" && ["W", "kW"].includes(s.attributes.unit_of_measurement);
+  });
+  return m ? m.entity_id : null;
 }
 
 // ---- The dialog ----------------------------------------------------------
@@ -703,20 +752,23 @@ export class EntityInsightsDialog extends HTMLElement {
 
   // State rows from `start` to now: {rows: {id: [{t, s, pos}]}, from} -
   // `from` = since when the data really covers.
+  // withPos: covers' positions (true), or the name of another attribute to keep as `br` (a light's "brightness")
   async _stateRows(ids, start, withPos, r) {
+    const attr = typeof withPos === "string" ? withPos : withPos ? "current_position" : null;
     const out = {};
     let from = start;
     if (start >= r.recFrom || !this._opts().influx) {
       const result = await this._hass.callWS({
         type: "history/history_during_period",
         start_time: new Date(start).toISOString(), end_time: new Date().toISOString(),
-        entity_ids: ids, minimal_response: !withPos, no_attributes: !withPos, significant_changes_only: false,
+        entity_ids: ids, minimal_response: !attr, no_attributes: !attr, significant_changes_only: false,
       });
       for (const id of ids) {
         out[id] = (result[id] || []).map((x) => {
           const s = x.s !== undefined ? x.s : x.state;
           return { t: x.lu !== undefined ? x.lu * 1000 : new Date(x.last_updated || x.last_changed).getTime(),
-                   s: s, pos: withPos ? coverPos(s, x.a || x.attributes) : null };
+                   s: s, pos: withPos === true ? coverPos(s, x.a || x.attributes) : null,
+                   br: attr === "brightness" ? ((x.a || x.attributes || {}).brightness ?? null) : undefined };
         });
         const first = out[id][0];
         // a row at or before `start` (the state the range starts in) leaves `from` at
@@ -731,9 +783,10 @@ export class EntityInsightsDialog extends HTMLElement {
       for (let i = 0; i < ids.length; i += 40) {
         const part = ids.slice(i, i + 40);
         const res = await this._hass.callApi("GET", "influx_proxy/states?entities=" + part.join(",") + "&days=" + days +
-          (withPos ? "&attributes=current_position" : ""));
+          (attr ? "&attributes=" + attr : ""));
         for (const id of part) {
-          out[id] = (res[id] || []).map(([t, s, p]) => ({ t: t, s: s, pos: withPos ? coverPos(s, { current_position: p }) : null }));
+          out[id] = (res[id] || []).map(([t, s, p]) => ({ t: t, s: s, pos: withPos === true ? coverPos(s, { current_position: p }) : null,
+                                                           br: attr === "brightness" ? (typeof p === "number" ? p : null) : undefined }));
           const first = out[id][0];
           from = Math.max(from, first ? first.t : Date.now());
         }
@@ -875,6 +928,7 @@ export class EntityInsightsDialog extends HTMLElement {
       for (const id of cur.ids) periods[id] = onPeriods(rows[id] || [], r.fetchFrom, end);
       this._hist = { k: r.k, from: from, end: end, periods: periods,
                      any: cur.ids.length > 1 ? unionPeriods(Object.values(periods), end) : periods[cur.ids[0]] };
+      this._hist.energy = await this._fetchEnergy(cur, r, rows, end);
     } catch (err) {
       console.warn("ENTITY-INSIGHTS: history failed", err);
       if (this._cur !== cur || this._rangeKey !== r.k) return;
@@ -882,6 +936,34 @@ export class EntityInsightsDialog extends HTMLElement {
     }
     this._viewKey = null;
     this._view();
+  }
+
+  // Energy of the dialog's entities over the range and the one before: [now Wh, previous Wh | null], or null
+  // when nothing says what they draw. A meter on the entity's own device first, then the power given.
+  async _fetchEnergy(cur, r, rows, end) {
+    const watts = cur.watts || (cur.ids.every((id) => settings.watts[id] !== undefined) ? cur.ids.map((id) => settings.watts[id]) : null);
+    const meters = cur.ids.map((id) => powerSensorOf(this._hass, id));
+    const out = { watts: watts, meter: meters.every(Boolean) ? meters : null, now: 0, prev: 0, prevOk: true };
+    if (!out.meter && !watts) return null;
+    const span = (fn) => { out.now += fn(r.a, r.b); if (out.prevOk) out.prev += fn(r.prev[0], r.prev[1]); };
+    try {
+      if (out.meter) {
+        const { rows: mr, from } = await this._stateRows(out.meter, r.fetchFrom, false, r);
+        out.prevOk = from <= r.prev[0] + 60000;
+        for (const id of out.meter) span((a, b) => meterWh(mr[id] || [], a, b, end));
+      } else {
+        // dimmable lights: their brightness too
+        const dims = cur.ids.filter((id) => dimmable(this._hass.states[id]));
+        let br = {};
+        if (dims.length) br = (await this._stateRows(dims, r.fetchFrom, "brightness", r)).rows;
+        out.prevOk = this._hist && this._hist.from <= r.prev[0] + 60000;
+        cur.ids.forEach((id, i) => span((a, b) => energyWh(br[id] || rows[id] || [], a, b, end, watts[i], !!br[id])));
+      }
+    } catch (err) {
+      console.warn("ENTITY-INSIGHTS: energy failed", err);
+      return null;
+    }
+    return out;
   }
 
   _renderOnOff() {
@@ -1016,6 +1098,22 @@ export class EntityInsightsDialog extends HTMLElement {
         if (!within(any, midnight(k), k ? midnight(k - 1) : now, now).ms) dark++;
       }
       facts.push([t("f_dark_days"), t("of", { n: dark, d: r.days })]);
+    }
+    // its power and energy over the range (with what it cost, when a price is known)
+    const en = hist.energy;
+    if (en) {
+      const n = (v, d) => v.toLocaleString(this.lang, { minimumFractionDigits: d, maximumFractionDigits: d });
+      if (en.meter) {
+        const w = en.meter.reduce((a, id) => a + (Number((this._hass.states[id] || {}).state) || 0), 0);
+        facts.push([t("f_power_meter"), n(w, w < 10 ? 1 : 0) + " W"]);
+      } else facts.push([t("f_power"), en.watts.map((w) => n(w, w % 1 ? 1 : 0) + " W").join(" + ")]);
+      const pr = cur.price ?? settings.price;
+      const price = typeof pr === "string" ? Number((this._hass.states[pr] || {}).state) : pr;
+      const kwh = en.now / 1000;
+      let txt = n(kwh, kwh < 10 ? 2 : 1) + " kWh";
+      if (typeof price === "number" && isFinite(price)) txt += " · " + n(kwh * price, 2) + (this._hass.config && this._hass.config.currency === "PLN" ? " zł" : " " + ((this._hass.config && this._hass.config.currency) || ""));
+      if (en.prevOk && en.prev > 0) txt += " · " + f.change(en.now, en.prev);
+      facts.push([t("f_energy", { range: r.label.toLowerCase() }), esc(txt)]);
     }
     const rank = this._rankFor(tot.ms, r, (rows, rr) =>
       within(onPeriods(rows, rr.a, Date.now()), rr.a, rr.b, Date.now()).ms);
@@ -1298,6 +1396,8 @@ export class EntityInsightsDialog extends HTMLElement {
 // ---- Module state and hooks ----------------------------------------------
 const settings = {
   recorderDays: 10,
+  watts: {},    // entity -> W (configure / the invisible card)
+  price: null,  // a kWh: a number or a sensor
   // Extension points, for a card that adds its own pieces (e.g. a floor plan
   // showing the sun in the windows): window.entityInsights.configure({extensions}).
   // They return HTML that goes into the dialog as it is: escape your own data.
@@ -1384,6 +1484,10 @@ const api = {
   configure(opts = {}) {
     if (Number(opts.recorder_days) > 0) settings.recorderDays = Math.round(Number(opts.recorder_days));
     if (opts.extensions) Object.assign(settings.extensions, opts.extensions);
+    if (opts.watts && typeof opts.watts === "object") {
+      for (const [k, v] of Object.entries(opts.watts)) if (validEntityId(k) && typeof v === "number" && v >= 0) settings.watts[k] = v;
+    }
+    if (opts.price !== undefined) settings.price = priceOf(opts.price);
   },
 };
 
@@ -1401,6 +1505,7 @@ export class EntityInsightsCard extends HTMLElement {
     this._config = config;
     this._domains = new Set(mi);
     if (config.recorder_days !== undefined) api.configure({ recorder_days: config.recorder_days });
+    if (config.watts !== undefined || config.price !== undefined) api.configure({ watts: config.watts, price: config.price });
     if (this.isConnected) takeover.set(this, this._domains);
     this._draw();
   }

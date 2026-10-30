@@ -227,3 +227,35 @@ test("dimmable: lights with a brightness mode only", () => {
   assert.equal(m.dimmable(s("switch.a", ["brightness"])), false);
   assert.equal(m.dimmable(undefined), false);
 });
+
+test("energy: a lamp's time on times its power, dimmed by brightness", () => {
+  const h = 3600e3, rows = [{ t: 0, s: "on", br: 255 }, { t: h, s: "on", br: 128 }, { t: 2 * h, s: "off" }, { t: 3 * h, s: "on" }];
+  assert.equal(Math.round(m.energyWh(rows, 0, 4 * h, 4 * h, 10, false)), 30);           // 3 h on x 10 W
+  assert.equal(Math.round(m.energyWh(rows, 0, 3 * h, 4 * h, 10, true) * 10), 150);      // 10 + 5.02 (half) Wh
+  assert.equal(Math.round(m.energyWh(rows, h / 2, h, 4 * h, 10, false)), 5);             // clipped to the range
+});
+
+test("energy: a power meter's watts over time", () => {
+  const h = 3600e3, rows = [{ t: 0, s: "100" }, { t: h, s: "0" }, { t: 2 * h, s: "unavailable" }, { t: 3 * h, s: "50" }];
+  assert.equal(m.meterWh(rows, 0, 4 * h, 4 * h), 150);
+});
+
+test("energy: a meter only on the entity's own device, not on a controller of many", () => {
+  const st = (dc, u) => ({ attributes: { device_class: dc, unit_of_measurement: u } });
+  const hass = {
+    entities: { "light.lamp": { entity_id: "light.lamp", device_id: "plug" }, "sensor.plug_power": { entity_id: "sensor.plug_power", device_id: "plug" },
+      "light.a": { entity_id: "light.a", device_id: "board" }, "light.b": { entity_id: "light.b", device_id: "board" },
+      "sensor.board_power": { entity_id: "sensor.board_power", device_id: "board" } },
+    states: { "sensor.plug_power": st("power", "W"), "sensor.board_power": st("power", "W") },
+  };
+  assert.equal(m.powerSensorOf(hass, "light.lamp"), "sensor.plug_power");
+  assert.equal(m.powerSensorOf(hass, "light.a"), null);
+});
+
+test("request: watts for each entity, a price or a price sensor", () => {
+  assert.deepEqual(m.parseRequest({ entity: "light.a", watts: 18 }).watts, [18]);
+  assert.deepEqual(m.parseRequest({ entities: ["light.a", "light.b"], watts: [10, 30] }).watts, [10, 30]);
+  assert.equal(m.parseRequest({ entities: ["light.a", "light.b"], watts: [10] }).watts, null);
+  assert.equal(m.parseRequest({ entity: "light.a", price: "sensor.kwh" }).price, "sensor.kwh");
+  assert.equal(m.parseRequest({ entity: "light.a", price: 1.12 }).price, 1.12);
+});

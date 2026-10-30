@@ -98,6 +98,28 @@ hold_action:
 | `rank` | `true` / `false` — the "place in the house" fact (default: lights and covers) |
 | `rank_with` | the entities to rank against (default: all of the domain, without groups and hidden ones) |
 | `chart` | for sensors: options passed to Long-term Chart Card (without it installed, sensors open Home Assistant's own dialog) |
+| `watts` | the power of the entity in W (one number, or one per entity) — the dialog shows its energy over the range and what it cost |
+| `price` | the price of a kWh: a number, or a sensor that has it (e.g. `sensor.electricity_price`) |
+
+### Energy and cost
+
+For lights and switches the fun facts can show the power and the energy used in the chosen range,
+with its cost and the change against the period before:
+
+```yaml
+hold_action:
+  action: fire-dom-event
+  entity_insights:
+    entity: light.kitchen_rail
+    watts: 18
+    price: 1.12        # or a sensor with the price of a kWh
+```
+
+- A dimmable light counts with its brightness.
+- An entity whose own device has a power sensor (a smart plug, a lamp with a meter) is measured by
+  that sensor instead — no `watts` needed. A device with several lights or switches on it (a relay
+  board) is not: its meter does not measure one of them.
+- Powers and the price can also be set once for a dashboard, on the invisible card (below).
 
 ### Instead of the entity dialog
 
@@ -109,12 +131,17 @@ the dialog still opens Home Assistant's own):
 type: custom:entity-insights
 more_info: [light, cover]
 recorder_days: 10    # your recorder purge_keep_days (default 10)
+price: 1.12          # optional: a kWh (a number or a sensor)
+watts:               # optional: the power of your lights (W)
+  light.kitchen_rail: 18
+  light.living_room: 60
 ```
 
 ### From your own card
 
 ```js
 window.entityInsights.open({ entity: "cover.bedroom" }, this.hass);
+window.entityInsights.open({ entity: "light.desk", watts: 9, price: 1.12 }, this.hass);
 window.entityInsights.openCustom("My dialog", (body, hass) => { /* draw */ });
 ```
 

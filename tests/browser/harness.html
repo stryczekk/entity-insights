@@ -87,6 +87,13 @@ if (shot) {
   check("subscribed to its own entities only", hass.calls.some((c) => c.subscribe === "subscribe_entities" && c.entity_ids && c.entity_ids.length >= 1)
     && !hass.calls.some((c) => c.subscribe === "state_changed"));
 
+  check("no power given: no energy row", !/Energy/.test(text(".facts")), text(".facts"));
+  // the power and price passed in: its energy and cost over the range
+  api.close();
+  check("opens with watts and a price", api.open({ entity: "light.kitchen_ceiling", watts: 18, price: 1.12 }, hass) === true);
+  check("history loads (with watts)", await loaded());
+  check("power and energy with its cost", /Power\s*18 W/.test(text(".facts")) && /Energy[^)]*\)\s*[\d.,]+ kWh · [\d.,]+/.test(text(".facts")), text(".facts"));
+
   // switch -> service call, no real device
   $(".switch").click();
   const svc = hass.calls.filter((c) => c.service);
