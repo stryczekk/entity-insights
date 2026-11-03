@@ -25,14 +25,17 @@ test("tr: domain overrides, fallback to English, placeholders", () => {
   assert.equal(m.tr("pl", "sum_on", { n: 3 }, "light"), "świeciła · 3×");
   assert.equal(m.tr("pl", "sum_on", { n: 3 }, "switch"), "włączone · 3×");
   assert.equal(m.tr("en", "sum_on", { n: 3 }, "light"), "lit · 3×");
-  assert.equal(m.tr("de", "close"), "Close");
+  assert.equal(m.tr("fr", "close"), "Close");
+  assert.equal(m.tr("de", "close"), "Schließen");
+  assert.equal(m.tr("de", "switch", null, "light"), "Licht");
   assert.equal(m.tr("en", "of", { n: 2 }), "2 of {d}");
 });
 
 test("langOf follows the HA locale", () => {
   assert.equal(m.langOf({ locale: { language: "pl" } }), "pl");
   assert.equal(m.langOf({ language: "pl-PL" }), "pl");
-  assert.equal(m.langOf({ locale: { language: "de" } }), "en");
+  assert.equal(m.langOf({ locale: { language: "fr" } }), "en");
+  assert.equal(m.langOf({ locale: { language: "de" } }), "de");
   assert.equal(m.langOf(null), "en");
 });
 
@@ -72,8 +75,15 @@ test("kindOf picks the view by domain", () => {
   assert.equal(m.kindOf(s("binary_sensor.door")), "onoff");
   assert.equal(m.kindOf(s("cover.a", "open")), "cover");
   assert.equal(m.kindOf(s("sensor.t", "21.5", { unit_of_measurement: "°C" })), "chart");
-  assert.equal(m.kindOf(s("sensor.phase", "rinse", {})), null);
-  assert.equal(m.kindOf(s("climate.a", "heat")), null);
+  // a sensor of words: time in each state; dates / timestamps are not
+  assert.equal(m.kindOf(s("sensor.phase", "rinse", {})), "states");
+  assert.equal(m.kindOf(s("sensor.end", "2026-11-03T10:30:00Z", { device_class: "timestamp" })), null);
+  assert.equal(m.kindOf(s("sensor.bin", "2026-11-10", { device_class: "date" })), null);
+  // things with an "on" of their own: a thermostat at work, a lock open, a player playing, a robot out
+  for (const id of ["climate.a", "water_heater.a", "lock.a", "alarm_control_panel.a", "media_player.a", "vacuum.a", "lawn_mower.a"])
+    assert.equal(m.kindOf(s(id, "x")), "onoff", id);
+  assert.equal(m.kindOf(s("weather.home", "sunny")), null);
+  assert.equal(m.kindOf(s("camera.door", "streaming")), null);
   assert.equal(m.kindOf(undefined), null);
 });
 
@@ -258,4 +268,20 @@ test("request: watts for each entity, a price or a price sensor", () => {
   assert.equal(m.parseRequest({ entities: ["light.a", "light.b"], watts: [10] }).watts, null);
   assert.equal(m.parseRequest({ entity: "light.a", price: "sensor.kwh" }).price, "sensor.kwh");
   assert.equal(m.parseRequest({ entity: "light.a", price: 1.12 }).price, 1.12);
+});
+
+test("activeNow: the entity's own meaning of on", () => {
+  const s = (id, state, attributes = {}) => ({ entity_id: id, state, attributes });
+  assert.equal(m.activeNow(s("climate.a", "heat", { hvac_action: "heating" })), true);
+  assert.equal(m.activeNow(s("climate.a", "heat", { hvac_action: "idle" })), false);
+  assert.equal(m.activeNow(s("climate.ac", "cool", { hvac_action: "cooling" })), true);
+  assert.equal(m.activeNow(s("water_heater.b", "eco", { current_temperature: 44, temperature: 55 })), true);
+  assert.equal(m.activeNow(s("water_heater.b", "eco", { current_temperature: 54, temperature: 55 })), false);
+  assert.equal(m.activeNow(s("lock.door", "unlocked")), true);
+  assert.equal(m.activeNow(s("lock.door", "locked")), false);
+  assert.equal(m.activeNow(s("alarm_control_panel.h", "armed_night")), true);
+  assert.equal(m.activeNow(s("alarm_control_panel.h", "disarmed")), false);
+  assert.equal(m.activeNow(s("media_player.tv", "playing")), true);
+  assert.equal(m.activeNow(s("media_player.tv", "paused")), false);
+  assert.equal(m.activeNow(s("light.a", "on")), true);
 });

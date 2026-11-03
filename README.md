@@ -2,8 +2,8 @@
 
 [![hacs][hacs-badge]][hacs] [![Validate][validate-badge]][validate] [![Buy Me a Coffee][bmc-badge]][bmc]
 
-A **history dialog** for lights, switches and covers that opens from **any
-card** — a tile, a button, a floor plan — or **instead of the entity
+A **history dialog** for lights, switches, covers, thermostats, locks,
+players, sensors and more that opens from **any card** — a tile, a button, a floor plan — or **instead of the entity
 dialog**. Not a card: a module that adds the dialog to your dashboards.
 
 - **how long it was on** (or a cover closed), how many times, average per
@@ -17,9 +17,16 @@ dialog**. Not a card: a module that adds the dialog to your dashboards.
   InfluxDB through [InfluxDB Proxy][proxy], when it is installed
 - the controls on top: switches (several circuits of one lamp side by
   side), cover up / stop / down and a position slider
+- **thermostats and water heaters**: hours of heating or cooling, the
+  temperature against the set one, − / + to change it, the modes
+- **locks, the alarm, players, robot vacuums and mowers, fans,
+  humidifiers, valves, sirens**: when and how long they were unlocked,
+  armed, playing, cleaning…, with their own buttons; **sliders** for a
+  fan's speed, a humidifier's target and a player's volume
+- **sensors of words** (a washer's program, a phase): time in each state
 - numeric sensors: a chart through [Long-term Chart Card][chart]
-- follows your Home Assistant language (English, Polish) and theme; made
-  for a phone first
+- follows your Home Assistant language (English, Polish, German) and
+  theme; made for a phone first
 
 **See your home's habits** — when the lights go on, how long the covers
 stay closed, who moves them — without building a single chart.
@@ -129,7 +136,7 @@ the dialog still opens Home Assistant's own):
 
 ```yaml
 type: custom:entity-insights
-more_info: [light, cover]
+more_info: [light, cover, switch, climate, lock, media_player]
 recorder_days: 10    # your recorder purge_keep_days (default 10)
 price: 1.12          # optional: a kWh (a number or a sensor)
 watts:               # optional: the power of your lights (W)
@@ -161,7 +168,7 @@ has data.
 | Suite | What it covers | Needs |
 |---|---|---|
 | `tests/helpers.test.js` | ranges, periods, buckets, cover moves, ranking, request parsing, plurals | Node 20+ (`npm test`) |
-| `tests/browser/run.sh` | the dialog in headless Chromium with a made-up home (100 days of generated history): lights, two circuits, brightness, switch, cover controls, who moves it, InfluxDB ranges, English and Polish, phone width, escaping of names, the entity dialog takeover, `fire-dom-event`, `openCustom` — service calls are recorded, nothing is switched | Chromium, Python 3 (`--shots` writes the screenshots above) |
+| `tests/browser/run.sh` | the dialog in headless Chromium with a made-up home (100 days of generated history): lights, two circuits, brightness, switch, cover controls, who moves it, InfluxDB ranges, English, Polish and German, thermostats and the other kinds, phone width, escaping of names, the entity dialog takeover, `fire-dom-event`, `openCustom` — service calls are recorded, nothing is switched | Chromium, Python 3 (`--shots` writes the screenshots above) |
 
 ## Support
 

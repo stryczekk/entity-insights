@@ -287,6 +287,9 @@ if (shot) {
   window.dispatchEvent(new CustomEvent("ll-custom", { detail: { entity_insights: { entity: "switch.coffee_maker" } } }));
   check("fire-dom-event opens it", dialog().isOpen && text("#title") === "Coffee maker", text("#title"));
   check("switch domain wording", (await loaded()) && text(".sums").includes("on ·"), text(".sums"));
+  // the box of a switch's dialog is not styled as the toggle (class "switch" squeezed it to 46 px)
+  check("switch dialog: full width, one toggle", $(".box").getBoundingClientRect().width > 200 && $$(".switch").length === 1,
+    Math.round($(".box").getBoundingClientRect().width) + " px, " + $$(".switch").length + " toggles");
   api.close();
   check("invalid entity ids refused", api.open("light.x; drop", ha.hass) === false && api.open({ entity: "<b>" }, ha.hass) === false);
 

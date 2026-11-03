@@ -1,6 +1,6 @@
 {
   "name": "entity-insights",
-  "version": "0.9.1",
+  "version": "0.11.0",
   "private": true,
   "type": "module",
   "description": "Home Assistant: a history dialog for lights, switches and covers, opened from any card",

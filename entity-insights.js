@@ -29,7 +29,7 @@
 // See README.md for all options.
 
 export const NAME = "entity-insights";
-export const VERSION = "0.10.0";
+export const VERSION = "0.11.0";
 
 // ---- Strings -----------------------------------------------------------
 // "{x}" is replaced from vars. A key "light.xyz" overrides "xyz" for lights
@@ -73,6 +73,59 @@ export const STRINGS = {
     chart_temp: "Temperature", chart_hum: "Humidity",
     config_title: "Entity Insights", config_takeover: "Opens instead of the entity dialog for: {list}",
     config_none: "Loaded. Add more_info: [light, cover] to open it instead of the entity dialog.",
+    // a thermostat / A/C: "on" = at work (heating, cooling, drying)
+    "climate.switch": "Heating / cooling", "climate.switch_heat": "Heating", "climate.switch_cool": "Cooling", "climate.on_since": "running since {t}", "climate.off_since": "idle since {t}",
+    "climate.sum_on": "running · {n}×", "climate.sum_count": "runs", "climate.bars_h": "Running by hour", "climate.bars_d": "Hours running per day",
+    "climate.bars_w": "Hours running per week", "climate.tip_off": "idle", "climate.hours_title": "When it runs ({range})",
+    "climate.f_top_hour": "Runs most often", "climate.f_usual_on": "Usually starts", "climate.f_usual_off": "Usually stops",
+    "climate.f_avg_one": "Average run", "climate.f_night": "Starts at night (0–5)", "climate.f_dark_days": "Days without running",
+    "climate.recent": "Recent runs", "climate.is_on": "running", "climate.none_on": "Did not run in this period.",
+    lv_speed: "Speed", lv_humidity: "Target", lv_volume: "Volume",
+    set_to: "Set to", now_is: "now {v} °C", t_title: "Temperature", t_now: "in the room", t_set: "set",
+    // a boiler: "on" = heating the water (well under the set temperature)
+    "water_heater.switch": "Heating water", "water_heater.on_since": "heating since {t}", "water_heater.off_since": "warm since {t}",
+    "water_heater.sum_on": "heating · {n}×", "water_heater.sum_count": "times heated", "water_heater.bars_d": "Hours of heating per day",
+    "water_heater.bars_h": "Heating by hour", "water_heater.bars_w": "Hours of heating per week", "water_heater.tip_off": "warm",
+    "water_heater.hours_title": "When it heats ({range})", "water_heater.f_top_hour": "Heats most often", "water_heater.f_usual_on": "Usually starts",
+    "water_heater.f_usual_off": "Usually warm again", "water_heater.f_avg_one": "Average heating", "water_heater.f_night": "Heated at night (0–5)",
+    "water_heater.f_dark_days": "Days without heating", "water_heater.recent": "Recent heating", "water_heater.is_on": "heating",
+    "water_heater.none_on": "Did not heat in this period.", "water_heater.now_is": "water {v} °C", "water_heater.t_now": "water",
+    // a lock: "on" = unlocked
+    "lock.switch": "Lock", "lock.on_since": "unlocked since {t}", "lock.off_since": "locked since {t}", "lock.sum_on": "unlocked · {n}×",
+    "lock.sum_count": "times unlocked", "lock.bars_h": "Unlocked by hour", "lock.bars_d": "Hours unlocked per day", "lock.bars_w": "Hours unlocked per week",
+    "lock.tip_off": "locked", "lock.hours_title": "When it is unlocked ({range})", "lock.f_top_hour": "Most often unlocked",
+    "lock.f_usual_on": "Usually unlocked", "lock.f_usual_off": "Usually locked", "lock.f_avg_one": "Unlocked on average",
+    "lock.f_night": "Unlocked at night (0–5)", "lock.f_dark_days": "Days never unlocked", "lock.recent": "Recently unlocked",
+    "lock.is_on": "unlocked", "lock.none_on": "Not unlocked in this period.",
+    // an alarm: "on" = armed
+    "alarm_control_panel.switch": "Alarm", "alarm_control_panel.on_since": "armed since {t}", "alarm_control_panel.off_since": "disarmed since {t}",
+    "alarm_control_panel.sum_on": "armed · {n}×", "alarm_control_panel.sum_count": "times armed", "alarm_control_panel.bars_h": "Armed by hour",
+    "alarm_control_panel.bars_d": "Hours armed per day", "alarm_control_panel.bars_w": "Hours armed per week", "alarm_control_panel.tip_off": "disarmed",
+    "alarm_control_panel.hours_title": "When it is armed ({range})", "alarm_control_panel.f_top_hour": "Most often armed",
+    "alarm_control_panel.f_usual_on": "Usually armed", "alarm_control_panel.f_usual_off": "Usually disarmed", "alarm_control_panel.f_avg_one": "Armed on average",
+    "alarm_control_panel.f_night": "Armed at night (0–5)", "alarm_control_panel.f_dark_days": "Days never armed", "alarm_control_panel.recent": "Recently armed",
+    "alarm_control_panel.is_on": "armed", "alarm_control_panel.none_on": "Not armed in this period.",
+    // a player: "on" = playing
+    "media_player.switch": "Playing", "media_player.on_since": "playing since {t}", "media_player.off_since": "not playing since {t}",
+    "media_player.sum_on": "played · {n}×", "media_player.sum_count": "times played", "media_player.bars_h": "Playing by hour",
+    "media_player.bars_d": "Hours played per day", "media_player.bars_w": "Hours played per week", "media_player.tip_off": "not playing",
+    "media_player.hours_title": "When it plays ({range})", "media_player.f_top_hour": "Plays most often", "media_player.f_usual_on": "Usually starts",
+    "media_player.f_usual_off": "Usually stops", "media_player.f_avg_one": "Average play", "media_player.f_night": "Played at night (0–5)",
+    "media_player.f_dark_days": "Days without playing", "media_player.recent": "Recently played", "media_player.is_on": "playing",
+    "media_player.none_on": "Did not play in this period.",
+    // robots: "on" = cleaning / mowing
+    "vacuum.switch": "Cleaning", "vacuum.on_since": "cleaning since {t}", "vacuum.off_since": "docked since {t}", "vacuum.sum_on": "cleaned · {n}×",
+    "vacuum.sum_count": "times cleaned", "vacuum.bars_h": "Cleaning by hour", "vacuum.bars_d": "Hours of cleaning per day", "vacuum.bars_w": "Hours of cleaning per week",
+    "vacuum.tip_off": "docked", "vacuum.hours_title": "When it cleans ({range})", "vacuum.f_top_hour": "Cleans most often", "vacuum.f_usual_on": "Usually starts",
+    "vacuum.f_usual_off": "Usually back", "vacuum.f_avg_one": "Average cleaning", "vacuum.f_night": "Cleaned at night (0–5)", "vacuum.f_dark_days": "Days without cleaning",
+    "vacuum.recent": "Recent cleaning", "vacuum.is_on": "cleaning", "vacuum.none_on": "Did not clean in this period.",
+    "lawn_mower.switch": "Mowing", "lawn_mower.on_since": "mowing since {t}", "lawn_mower.off_since": "docked since {t}", "lawn_mower.sum_on": "mowed · {n}×",
+    "lawn_mower.sum_count": "times mowed", "lawn_mower.bars_h": "Mowing by hour", "lawn_mower.bars_d": "Hours of mowing per day", "lawn_mower.bars_w": "Hours of mowing per week",
+    "lawn_mower.tip_off": "docked", "lawn_mower.hours_title": "When it mows ({range})", "lawn_mower.f_top_hour": "Mows most often", "lawn_mower.f_usual_on": "Usually starts",
+    "lawn_mower.f_usual_off": "Usually back", "lawn_mower.f_avg_one": "Average mowing", "lawn_mower.f_night": "Mowed at night (0–5)", "lawn_mower.f_dark_days": "Days without mowing",
+    "lawn_mower.recent": "Recent mowing", "lawn_mower.is_on": "mowing", "lawn_mower.none_on": "Did not mow in this period.",
+    // a sensor of words
+    since: "since {t}", st_time: "Time in each state ({range})", st_recent: "Recent changes", st_none: "No changes in this period.",
   },
   pl: {
     r_today: "Dziś", r_yesterday: "Wczoraj", r_7: "7 dni", r_14: "14 dni", r_30: "30 dni", r_90: "3 mies.",
@@ -116,6 +169,139 @@ export const STRINGS = {
     chart_temp: "Temperatura", chart_hum: "Wilgotność",
     config_title: "Entity Insights", config_takeover: "Otwiera się zamiast okna encji dla: {list}",
     config_none: "Wczytany. Dopisz more_info: [light, cover], żeby zastąpił okno encji.",
+    "climate.switch": "Grzanie / chłodzenie", "climate.switch_heat": "Grzanie", "climate.switch_cool": "Chłodzenie", "climate.on_since": "pracuje od {t}", "climate.off_since": "nie pracuje od {t}",
+    "climate.sum_on": "pracował · {n}×", "climate.sum_count": "cykli pracy", "climate.bars_h": "Praca w godzinach", "climate.bars_d": "Godziny pracy na dzień",
+    "climate.bars_w": "Godziny pracy na tydzień", "climate.tip_off": "nie pracował", "climate.hours_title": "O której pracuje ({range})",
+    "climate.f_top_hour": "Najczęściej pracuje", "climate.f_usual_on": "Zwykle rusza", "climate.f_usual_off": "Zwykle staje",
+    "climate.f_avg_one": "Średnio jeden cykl", "climate.f_night": "Starty w nocy (0–5)", "climate.f_dark_days": "Dni bez pracy",
+    "climate.recent": "Ostatnie cykle pracy", "climate.is_on": "pracuje", "climate.none_on": "Nie pracował w tym okresie.",
+    lv_speed: "Prędkość", lv_humidity: "Docelowa", lv_volume: "Głośność",
+    set_to: "Ustawione", now_is: "teraz {v} °C", t_title: "Temperatura", t_now: "w pokoju", t_set: "zadana",
+    "water_heater.switch": "Grzanie wody", "water_heater.on_since": "grzeje od {t}", "water_heater.off_since": "ciepła od {t}",
+    "water_heater.sum_on": "grzał · {n}×", "water_heater.sum_count": "grzań", "water_heater.bars_d": "Godziny grzania na dzień",
+    "water_heater.bars_h": "Grzanie w godzinach", "water_heater.bars_w": "Godziny grzania na tydzień", "water_heater.tip_off": "ciepła",
+    "water_heater.hours_title": "O której grzeje ({range})", "water_heater.f_top_hour": "Najczęściej grzeje", "water_heater.f_usual_on": "Zwykle zaczyna",
+    "water_heater.f_usual_off": "Zwykle znów ciepła", "water_heater.f_avg_one": "Średnio jedno grzanie", "water_heater.f_night": "Grzania w nocy (0–5)",
+    "water_heater.f_dark_days": "Dni bez grzania", "water_heater.recent": "Ostatnie grzania", "water_heater.is_on": "grzeje",
+    "water_heater.none_on": "Nie grzał w tym okresie.", "water_heater.now_is": "woda {v} °C", "water_heater.t_now": "woda",
+    "lock.switch": "Zamek", "lock.on_since": "otwarty od {t}", "lock.off_since": "zamknięty od {t}", "lock.sum_on": "otwarty · {n}×",
+    "lock.sum_count": "otwarć", "lock.bars_h": "Otwarcie w godzinach", "lock.bars_d": "Godziny otwarcia na dzień", "lock.bars_w": "Godziny otwarcia na tydzień",
+    "lock.tip_off": "zamknięty", "lock.hours_title": "O której otwarty ({range})", "lock.f_top_hour": "Najczęściej otwarty",
+    "lock.f_usual_on": "Zwykle otwierany", "lock.f_usual_off": "Zwykle zamykany", "lock.f_avg_one": "Średnio otwarty",
+    "lock.f_night": "Otwarcia w nocy (0–5)", "lock.f_dark_days": "Dni bez otwarcia", "lock.recent": "Ostatnie otwarcia",
+    "lock.is_on": "otwarty", "lock.none_on": "Nie był otwierany w tym okresie.",
+    "alarm_control_panel.switch": "Alarm", "alarm_control_panel.on_since": "uzbrojony od {t}", "alarm_control_panel.off_since": "rozbrojony od {t}",
+    "alarm_control_panel.sum_on": "uzbrojony · {n}×", "alarm_control_panel.sum_count": "uzbrojeń", "alarm_control_panel.bars_h": "Uzbrojenie w godzinach",
+    "alarm_control_panel.bars_d": "Godziny uzbrojenia na dzień", "alarm_control_panel.bars_w": "Godziny uzbrojenia na tydzień", "alarm_control_panel.tip_off": "rozbrojony",
+    "alarm_control_panel.hours_title": "O której uzbrojony ({range})", "alarm_control_panel.f_top_hour": "Najczęściej uzbrojony",
+    "alarm_control_panel.f_usual_on": "Zwykle uzbrajany", "alarm_control_panel.f_usual_off": "Zwykle rozbrajany", "alarm_control_panel.f_avg_one": "Średnio uzbrojony",
+    "alarm_control_panel.f_night": "Uzbrojenia w nocy (0–5)", "alarm_control_panel.f_dark_days": "Dni bez uzbrojenia", "alarm_control_panel.recent": "Ostatnie uzbrojenia",
+    "alarm_control_panel.is_on": "uzbrojony", "alarm_control_panel.none_on": "Nie był uzbrajany w tym okresie.",
+    "media_player.switch": "Granie", "media_player.on_since": "gra od {t}", "media_player.off_since": "nie gra od {t}",
+    "media_player.sum_on": "grał · {n}×", "media_player.sum_count": "odtworzeń", "media_player.bars_h": "Granie w godzinach",
+    "media_player.bars_d": "Godziny grania na dzień", "media_player.bars_w": "Godziny grania na tydzień", "media_player.tip_off": "nie grał",
+    "media_player.hours_title": "O której gra ({range})", "media_player.f_top_hour": "Najczęściej gra", "media_player.f_usual_on": "Zwykle włączany",
+    "media_player.f_usual_off": "Zwykle wyłączany", "media_player.f_avg_one": "Średnio jedno granie", "media_player.f_night": "Granie w nocy (0–5)",
+    "media_player.f_dark_days": "Dni bez grania", "media_player.recent": "Ostatnio grał", "media_player.is_on": "gra",
+    "media_player.none_on": "Nie grał w tym okresie.",
+    "vacuum.switch": "Sprzątanie", "vacuum.on_since": "sprząta od {t}", "vacuum.off_since": "w bazie od {t}", "vacuum.sum_on": "sprzątał · {n}×",
+    "vacuum.sum_count": "sprzątań", "vacuum.bars_h": "Sprzątanie w godzinach", "vacuum.bars_d": "Godziny sprzątania na dzień", "vacuum.bars_w": "Godziny sprzątania na tydzień",
+    "vacuum.tip_off": "w bazie", "vacuum.hours_title": "O której sprząta ({range})", "vacuum.f_top_hour": "Najczęściej sprząta", "vacuum.f_usual_on": "Zwykle rusza",
+    "vacuum.f_usual_off": "Zwykle wraca", "vacuum.f_avg_one": "Średnio jedno sprzątanie", "vacuum.f_night": "Sprzątanie w nocy (0–5)", "vacuum.f_dark_days": "Dni bez sprzątania",
+    "vacuum.recent": "Ostatnie sprzątania", "vacuum.is_on": "sprząta", "vacuum.none_on": "Nie sprzątał w tym okresie.",
+    "lawn_mower.switch": "Koszenie", "lawn_mower.on_since": "kosi od {t}", "lawn_mower.off_since": "w bazie od {t}", "lawn_mower.sum_on": "kosił · {n}×",
+    "lawn_mower.sum_count": "koszeń", "lawn_mower.bars_h": "Koszenie w godzinach", "lawn_mower.bars_d": "Godziny koszenia na dzień", "lawn_mower.bars_w": "Godziny koszenia na tydzień",
+    "lawn_mower.tip_off": "w bazie", "lawn_mower.hours_title": "O której kosi ({range})", "lawn_mower.f_top_hour": "Najczęściej kosi", "lawn_mower.f_usual_on": "Zwykle rusza",
+    "lawn_mower.f_usual_off": "Zwykle wraca", "lawn_mower.f_avg_one": "Średnio jedno koszenie", "lawn_mower.f_night": "Koszenie w nocy (0–5)", "lawn_mower.f_dark_days": "Dni bez koszenia",
+    "lawn_mower.recent": "Ostatnie koszenia", "lawn_mower.is_on": "kosi", "lawn_mower.none_on": "Nie kosił w tym okresie.",
+    since: "od {t}", st_time: "Czas w każdym stanie ({range})", st_recent: "Ostatnie zmiany", st_none: "Brak zmian w tym okresie.",
+  },
+  de: {
+    r_today: "Heute", r_yesterday: "Gestern", r_7: "7 Tage", r_14: "14 Tage", r_30: "30 Tage", r_90: "3 Monate",
+    c_7: "7 T", c_14: "14 T", c_30: "30 T", c_90: "3 Mon.",
+    vs_today: "vs. gestern bis jetzt", vs_yesterday: "vs. vorgestern", vs_days: "vs. {n} Tage davor",
+    loading: "Verlauf wird geladen…", failed: "Der Verlauf konnte nicht geladen werden.", failed_influx: "Der Verlauf aus InfluxDB konnte nicht geladen werden.",
+    close: "Schließen", standard: "Entitätseinstellungen",
+    no_entity: "Entität nicht gefunden", on_since: "an seit {t}", off_since: "aus seit {t}",
+    "light.on_since": "leuchtet seit {t}", "light.off_since": "aus seit {t}",
+    switch: "An / aus", "light.switch": "Licht", dim_off: "aus",
+    sum_on: "an · {n}×", "light.sum_on": "geleuchtet · {n}×", sum_count: "Mal an", "light.sum_count": "Mal eingeschaltet", avg_day: "Durchschnitt / Tag",
+    bars_h: "An nach Stunde", bars_d: "Stunden an pro Tag", bars_w: "Stunden an pro Woche",
+    "light.bars_h": "Leuchtet nach Stunde", "light.bars_d": "Leuchtstunden pro Tag", "light.bars_w": "Leuchtstunden pro Woche",
+    tip_off: "aus", "light.tip_off": "hat nicht geleuchtet",
+    hours_title: "Wann es an ist ({range})", "light.hours_title": "Wann es leuchtet ({range})",
+    in_days_avg: "an {n} von {d} Tagen · Ø {dur}", in_days: "an {n} von {d} Tagen", never: "nie",
+    facts: "Wissenswertes", f_top_hour: "Am häufigsten an", "light.f_top_hour": "Leuchtet am häufigsten",
+    f_usual_on: "Meist eingeschaltet", f_usual_off: "Meist ausgeschaltet", about: "gegen {t}",
+    f_longest: "Am längsten", date_from: "{date} ab {t}", f_avg_one: "Durchschnittliche Dauer",
+    f_night: "Nachts eingeschaltet (0–5)", not_once: "kein einziges Mal", f_dark_days: "Tage nie an", "light.f_dark_days": "Tage ohne Licht", of: "{n} von {d}",
+    f_rank: "Platz im Haus ({range})", counting: "wird gezählt…",
+    f_power: "Leistung", f_power_meter: "Leistung jetzt (Zähler)", f_energy: "Energie ({range})",
+    tl_today: "Heute seit Mitternacht", tl_yesterday: "Gestern",
+    recent: "Zuletzt eingeschaltet", is_on: "an", "light.is_on": "leuchtet", until: "bis {t}", none_on: "In diesem Zeitraum nicht an.",
+    "light.none_on": "Hat in diesem Zeitraum nicht geleuchtet.",
+    yesterday_at: "gestern {t}",
+    cv_none: "kein Wert", cv_opening: "Öffnet… {p}%", cv_closing: "Schließt… {p}%", cv_open: "Offen",
+    cv_closed: "Geschlossen", cv_partly: "{p}% geschlossen", cv_since: " seit {t}",
+    cv_open_btn: "Öffnen", cv_stop_btn: "Stopp", cv_close_btn: "Schließen", cv_slide_closed: "geschlossen", cv_slide_open: "offen",
+    cv_sum: "geschlossen", cv_longest: "am längsten am Stück", cv_avg: "im Schnitt geschlossen / Tag",
+    cv_bars_h: "Geschlossen nach Stunde", cv_bars_d: "Stunden geschlossen pro Tag", cv_bars_w: "Stunden geschlossen pro Woche",
+    cv_tip_open: "offen", cv_hours: "Wann er geschlossen ist ({range})",
+    f_usual_down: "Meist geschlossen um", f_usual_up: "Meist geöffnet um", f_longest_closed: "Am längsten geschlossen",
+    f_who: "Wer ihn bewegt", f_who_days: "Wer ihn bewegt ({n} Tage)", f_partial: "Zwischenstellungen", f_moves_vs: "Bewegungen {vs}",
+    f_rank_moves: "Platz im Haus (Bewegungen, {range})", cv_legend: "— geschlossen",
+    recent_moves: "Letzte Bewegungen", up: "hoch", down: "runter", at_pos: "auf {p}%", no_moves: "Hat sich in diesem Zeitraum nicht bewegt.",
+    src_automation: "Automatisierung", src_script: "Skript", src_app: "App", src_device: "Gerät",
+    moves: { one: "Bewegung", other: "Bewegungen" },
+    chart_temp: "Temperatur", chart_hum: "Luftfeuchtigkeit",
+    config_title: "Entity Insights", config_takeover: "Öffnet sich statt des Entitätsdialogs für: {list}",
+    config_none: "Geladen. Füge more_info: [light, cover] hinzu, damit es den Entitätsdialog ersetzt.",
+    "climate.switch": "Heizen / Kühlen", "climate.switch_heat": "Heizen", "climate.switch_cool": "Kühlen", "climate.on_since": "läuft seit {t}", "climate.off_since": "inaktiv seit {t}",
+    "climate.sum_on": "gelaufen · {n}×", "climate.sum_count": "Läufe", "climate.bars_h": "Laufzeit nach Stunde", "climate.bars_d": "Laufstunden pro Tag",
+    "climate.bars_w": "Laufstunden pro Woche", "climate.tip_off": "inaktiv", "climate.hours_title": "Wann es läuft ({range})",
+    "climate.f_top_hour": "Läuft am häufigsten", "climate.f_usual_on": "Startet meist", "climate.f_usual_off": "Stoppt meist",
+    "climate.f_avg_one": "Durchschnittlicher Lauf", "climate.f_night": "Starts in der Nacht (0–5)", "climate.f_dark_days": "Tage ohne Lauf",
+    "climate.recent": "Letzte Läufe", "climate.is_on": "läuft", "climate.none_on": "Ist in diesem Zeitraum nicht gelaufen.",
+    lv_speed: "Geschwindigkeit", lv_humidity: "Ziel", lv_volume: "Lautstärke",
+    set_to: "Eingestellt", now_is: "jetzt {v} °C", t_title: "Temperatur", t_now: "im Raum", t_set: "Soll",
+    "water_heater.switch": "Wasser heizen", "water_heater.on_since": "heizt seit {t}", "water_heater.off_since": "warm seit {t}",
+    "water_heater.sum_on": "geheizt · {n}×", "water_heater.sum_count": "Mal geheizt", "water_heater.bars_d": "Heizstunden pro Tag",
+    "water_heater.bars_h": "Heizen nach Stunde", "water_heater.bars_w": "Heizstunden pro Woche", "water_heater.tip_off": "warm",
+    "water_heater.hours_title": "Wann es heizt ({range})", "water_heater.f_top_hour": "Heizt am häufigsten", "water_heater.f_usual_on": "Startet meist",
+    "water_heater.f_usual_off": "Meist wieder warm", "water_heater.f_avg_one": "Durchschnittliches Heizen", "water_heater.f_night": "Nachts geheizt (0–5)",
+    "water_heater.f_dark_days": "Tage ohne Heizen", "water_heater.recent": "Letztes Heizen", "water_heater.is_on": "heizt",
+    "water_heater.none_on": "Hat in diesem Zeitraum nicht geheizt.", "water_heater.now_is": "Wasser {v} °C", "water_heater.t_now": "Wasser",
+    "lock.switch": "Schloss", "lock.on_since": "entriegelt seit {t}", "lock.off_since": "verriegelt seit {t}", "lock.sum_on": "entriegelt · {n}×",
+    "lock.sum_count": "Mal entriegelt", "lock.bars_h": "Entriegelt nach Stunde", "lock.bars_d": "Stunden entriegelt pro Tag", "lock.bars_w": "Stunden entriegelt pro Woche",
+    "lock.tip_off": "verriegelt", "lock.hours_title": "Wann es entriegelt ist ({range})", "lock.f_top_hour": "Am häufigsten entriegelt",
+    "lock.f_usual_on": "Meist entriegelt um", "lock.f_usual_off": "Meist verriegelt um", "lock.f_avg_one": "Im Schnitt entriegelt",
+    "lock.f_night": "Nachts entriegelt (0–5)", "lock.f_dark_days": "Tage nie entriegelt", "lock.recent": "Zuletzt entriegelt",
+    "lock.is_on": "entriegelt", "lock.none_on": "In diesem Zeitraum nicht entriegelt.",
+    "alarm_control_panel.switch": "Alarm", "alarm_control_panel.on_since": "scharf seit {t}", "alarm_control_panel.off_since": "unscharf seit {t}",
+    "alarm_control_panel.sum_on": "scharf · {n}×", "alarm_control_panel.sum_count": "Mal scharf geschaltet", "alarm_control_panel.bars_h": "Scharf nach Stunde",
+    "alarm_control_panel.bars_d": "Stunden scharf pro Tag", "alarm_control_panel.bars_w": "Stunden scharf pro Woche", "alarm_control_panel.tip_off": "unscharf",
+    "alarm_control_panel.hours_title": "Wann er scharf ist ({range})", "alarm_control_panel.f_top_hour": "Am häufigsten scharf",
+    "alarm_control_panel.f_usual_on": "Meist scharf geschaltet um", "alarm_control_panel.f_usual_off": "Meist unscharf geschaltet um", "alarm_control_panel.f_avg_one": "Im Schnitt scharf",
+    "alarm_control_panel.f_night": "Nachts scharf geschaltet (0–5)", "alarm_control_panel.f_dark_days": "Tage nie scharf", "alarm_control_panel.recent": "Zuletzt scharf geschaltet",
+    "alarm_control_panel.is_on": "scharf", "alarm_control_panel.none_on": "In diesem Zeitraum nicht scharf geschaltet.",
+    "media_player.switch": "Wiedergabe", "media_player.on_since": "spielt seit {t}", "media_player.off_since": "spielt nicht seit {t}",
+    "media_player.sum_on": "gespielt · {n}×", "media_player.sum_count": "Mal gespielt", "media_player.bars_h": "Wiedergabe nach Stunde",
+    "media_player.bars_d": "Wiedergabestunden pro Tag", "media_player.bars_w": "Wiedergabestunden pro Woche", "media_player.tip_off": "spielt nicht",
+    "media_player.hours_title": "Wann es spielt ({range})", "media_player.f_top_hour": "Spielt am häufigsten", "media_player.f_usual_on": "Startet meist",
+    "media_player.f_usual_off": "Stoppt meist", "media_player.f_avg_one": "Durchschnittliche Wiedergabe", "media_player.f_night": "Nachts gespielt (0–5)",
+    "media_player.f_dark_days": "Tage ohne Wiedergabe", "media_player.recent": "Zuletzt gespielt", "media_player.is_on": "spielt",
+    "media_player.none_on": "Hat in diesem Zeitraum nicht gespielt.",
+    "vacuum.switch": "Saugen", "vacuum.on_since": "saugt seit {t}", "vacuum.off_since": "in der Station seit {t}", "vacuum.sum_on": "gesaugt · {n}×",
+    "vacuum.sum_count": "Mal gesaugt", "vacuum.bars_h": "Saugen nach Stunde", "vacuum.bars_d": "Saugstunden pro Tag", "vacuum.bars_w": "Saugstunden pro Woche",
+    "vacuum.tip_off": "in der Station", "vacuum.hours_title": "Wann er saugt ({range})", "vacuum.f_top_hour": "Saugt am häufigsten", "vacuum.f_usual_on": "Startet meist",
+    "vacuum.f_usual_off": "Meist zurück", "vacuum.f_avg_one": "Durchschnittliches Saugen", "vacuum.f_night": "Nachts gesaugt (0–5)", "vacuum.f_dark_days": "Tage ohne Saugen",
+    "vacuum.recent": "Zuletzt gesaugt", "vacuum.is_on": "saugt", "vacuum.none_on": "Hat in diesem Zeitraum nicht gesaugt.",
+    "lawn_mower.switch": "Mähen", "lawn_mower.on_since": "mäht seit {t}", "lawn_mower.off_since": "in der Station seit {t}", "lawn_mower.sum_on": "gemäht · {n}×",
+    "lawn_mower.sum_count": "Mal gemäht", "lawn_mower.bars_h": "Mähen nach Stunde", "lawn_mower.bars_d": "Mähstunden pro Tag", "lawn_mower.bars_w": "Mähstunden pro Woche",
+    "lawn_mower.tip_off": "in der Station", "lawn_mower.hours_title": "Wann er mäht ({range})", "lawn_mower.f_top_hour": "Mäht am häufigsten", "lawn_mower.f_usual_on": "Startet meist",
+    "lawn_mower.f_usual_off": "Meist zurück", "lawn_mower.f_avg_one": "Durchschnittliches Mähen", "lawn_mower.f_night": "Nachts gemäht (0–5)", "lawn_mower.f_dark_days": "Tage ohne Mähen",
+    "lawn_mower.recent": "Zuletzt gemäht", "lawn_mower.is_on": "mäht", "lawn_mower.none_on": "Hat in diesem Zeitraum nicht gemäht.",
+    since: "seit {t}", st_time: "Zeit in jedem Zustand ({range})", st_recent: "Letzte Änderungen", st_none: "Keine Änderungen in diesem Zeitraum.",
   },
 };
 
@@ -354,14 +540,35 @@ export function coveredPeriods(rows, end) {
 // ---- What to show ------------------------------------------------------
 export const ONOFF_DOMAINS = ["light", "switch", "fan", "input_boolean", "binary_sensor", "siren", "humidifier"];
 const TOGGLE_DOMAINS = ["light", "switch", "fan", "input_boolean", "siren", "humidifier"];
+// Entities whose "on" is a state of their own: a thermostat at work, a lock open, a player playing, a robot out.
+// attrs: their attributes are needed for it (a thermostat's hvac_action); temps: a chart of the temperature and the set one
+export const ACTIVE = {
+  climate: { attrs: true, temps: true, on: (s, a) => !!a && ["heating", "cooling", "drying"].includes(a.hvac_action) },
+  water_heater: { attrs: true, temps: true, on: (s, a) => !!a && s !== "off" && typeof a.current_temperature === "number" &&
+    typeof a.temperature === "number" && a.current_temperature < a.temperature - 2 },
+  lock: { on: (s) => ["unlocked", "open", "opening", "unlocking"].includes(s) },
+  alarm_control_panel: { on: (s) => /^(armed|arming|triggered)/.test(s) },
+  media_player: { on: (s) => s === "playing" },
+  vacuum: { on: (s) => s === "cleaning" },
+  lawn_mower: { on: (s) => s === "mowing" },
+};
+// on now: the entity's own meaning of it (ACTIVE), else the state "on"
+export function activeNow(stateObj) {
+  if (!stateObj) return false;
+  const spec = ACTIVE[stateObj.entity_id.split(".")[0]];
+  return spec ? spec.on(stateObj.state, stateObj.attributes) : stateObj.state === "on";
+}
 
 export function kindOf(stateObj) {
   if (!stateObj) return null;
   const domain = stateObj.entity_id.split(".")[0];
   if (domain === "cover") return "cover";
-  if (ONOFF_DOMAINS.includes(domain)) return "onoff";
+  if (ONOFF_DOMAINS.includes(domain) || ACTIVE[domain]) return "onoff";
   if (domain === "sensor" && (stateObj.attributes.state_class || stateObj.attributes.unit_of_measurement) &&
       !isNaN(parseFloat(stateObj.state))) return "chart";
+  // a sensor of words (a washer's program, a phase): how long in each of them
+  if (domain === "sensor" && isNaN(parseFloat(stateObj.state)) && !["date", "timestamp"].includes(stateObj.attributes.device_class) &&
+      !["unknown", "unavailable", ""].includes(stateObj.state)) return "states";
   return null;
 }
 
@@ -462,7 +669,24 @@ const STYLE = `
   #body long-term-chart-card { --ha-card-background: transparent; --ha-card-box-shadow: none; --ha-card-border-width: 0; }
   .box { position: relative; padding: 12px 16px 4px; --ei-accent: var(--primary-color, #03a9f4);
          --ei-accent-soft: color-mix(in srgb, var(--ei-accent) 75%, transparent); }
-  .box.light { --ei-accent: #ffc300; }
+  .box.d-light { --ei-accent: #ffc300; }
+  .box.d-climate, .box.d-water_heater { --ei-accent: #ff8a65; }
+  .row.setp .name { flex: 1; }
+  .row.setp .pm { width: 36px; height: 32px; border-radius: 8px; border: 1px solid var(--divider-color, #2a3547); background: transparent;
+    color: inherit; font-size: 18px; cursor: pointer; }
+  .row.setp .setv { min-width: 70px; text-align: center; font-size: 18px; }
+  svg.temps { width: 100%; height: 90px; display: block; margin-top: 6px; }
+  svg.temps path { fill: none; vector-effect: non-scaling-stroke; }
+  svg.temps .tc { stroke: var(--ei-accent); stroke-width: 2; }
+  svg.temps .ts { stroke: var(--ei-muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
+  .tax { display: flex; flex-direction: column; justify-content: space-between; font-size: 11px; color: var(--ei-muted); margin-top: -90px;
+    height: 90px; pointer-events: none; }
+  .tleg { float: right; font-size: 12px; } .tleg i { display: inline-block; width: 14px; height: 0; vertical-align: middle; margin: 0 4px 0 10px; }
+  .tleg i.c { border-top: 2px solid var(--ei-accent); } .tleg i.s { border-top: 2px dashed var(--ei-muted); }
+  .strow { display: grid; grid-template-columns: minmax(80px, 1fr) 2fr auto; gap: 10px; align-items: center; padding: 4px 0; font-size: 14px; }
+  .strow .bar { height: 10px; background: var(--ei-soft); border-radius: 5px; overflow: hidden; }
+  .strow .bar i { display: block; height: 100%; background: var(--ei-accent); border-radius: 5px; }
+  .strow .d { color: var(--ei-muted); font-size: 13px; white-space: nowrap; }
   .box.cv { --ei-accent: #8ea1ba; }
   .muted { font-size: 13px; color: var(--ei-muted); }
   .sec { font-size: 13px; color: var(--ei-muted); margin-top: 12px; }
@@ -517,6 +741,7 @@ const STYLE = `
                     background: var(--ei-soft); color: inherit; }
   .cv-btns button.act { background: color-mix(in srgb, var(--ei-accent) 45%, transparent); }
   .cv-slide { display: flex; align-items: center; gap: 10px; font-size: 11px; color: var(--ei-muted); }
+  .cv-slide .lbl { font-size: 13px; min-width: 64px; }
   .cv-slide input { flex: 1; height: 28px; margin: 0; -webkit-appearance: none; appearance: none; background: transparent; }
   .cv-slide input::-webkit-slider-runnable-track { height: 8px; border-radius: 4px;
     background: linear-gradient(to right, var(--ei-accent) var(--p, 0%), var(--ei-soft) var(--p, 0%)); }
@@ -535,6 +760,9 @@ const LOGBOOK_SOURCES = (lang) => ({
   automation: tr(lang, "src_automation"), script: tr(lang, "src_script"),
   app: tr(lang, "src_app"), device: tr(lang, "src_device"),
 });
+
+// "14 days" inside a sentence; German keeps its capital nouns ("14 Tage", "3 Monate")
+const lowerLabel = (lang, s) => (String(lang).startsWith("de") ? s : s.toLowerCase());
 
 export class EntityInsightsDialog extends HTMLElement {
   constructor() {
@@ -588,8 +816,8 @@ export class EntityInsightsDialog extends HTMLElement {
     this._footStandard(req.ids[0]);
     if (kind === "chart") return this._openChart();
     this._panel(true);
-    this._view = kind === "cover" ? () => this._renderCover() : () => this._renderOnOff();
-    this._fetch = kind === "cover" ? () => this._fetchCover() : () => this._fetchOnOff();
+    this._view = kind === "cover" ? () => this._renderCover() : kind === "states" ? () => this._renderStates() : () => this._renderOnOff();
+    this._fetch = kind === "cover" ? () => this._fetchCover() : kind === "states" ? () => this._fetchStates() : () => this._fetchOnOff();
     this._show();
     this._view();
     this._fetch();
@@ -757,7 +985,8 @@ export class EntityInsightsDialog extends HTMLElement {
     const attr = typeof withPos === "string" ? withPos : withPos ? "current_position" : null;
     const out = {};
     let from = start;
-    if (start >= r.recFrom || !this._opts().influx) {
+    // "*": every attribute, only the recorder keeps them all
+    if (start >= r.recFrom || !this._opts().influx || attr === "*") {
       const result = await this._hass.callWS({
         type: "history/history_during_period",
         start_time: new Date(start).toISOString(), end_time: new Date().toISOString(),
@@ -768,7 +997,8 @@ export class EntityInsightsDialog extends HTMLElement {
           const s = x.s !== undefined ? x.s : x.state;
           return { t: x.lu !== undefined ? x.lu * 1000 : new Date(x.last_updated || x.last_changed).getTime(),
                    s: s, pos: withPos === true ? coverPos(s, x.a || x.attributes) : null,
-                   br: attr === "brightness" ? ((x.a || x.attributes || {}).brightness ?? null) : undefined };
+                   br: attr === "brightness" ? ((x.a || x.attributes || {}).brightness ?? null) : undefined,
+                   a: attr === "*" ? (x.a || x.attributes || {}) : undefined };
         });
         const first = out[id][0];
         // a row at or before `start` (the state the range starts in) leaves `from` at
@@ -801,6 +1031,7 @@ export class EntityInsightsDialog extends HTMLElement {
     const hhmm = (t) => { const d = new Date(t); return pad(d.getHours()) + ":" + pad(d.getMinutes()); };
     return {
       hhmm: hhmm,
+      num: (v) => Number(v).toLocaleString(lang, { maximumFractionDigits: 1 }),
       dur: (ms) => {
         const min = Math.round(ms / 60000);
         if (min < 60) return min + " min";
@@ -922,12 +1153,19 @@ export class EntityInsightsDialog extends HTMLElement {
     const r = this._range();
     const end = Date.now();
     try {
-      const { rows, from } = await this._stateRows(cur.ids, r.fetchFrom, false, r);
+      const spec = ACTIVE[cur.domain];
+      const { rows, from } = await this._stateRows(cur.ids, r.fetchFrom, spec && spec.attrs ? "*" : false, r);
       if (this._cur !== cur || this._rangeKey !== r.k) return;
+      let temps = null;
+      if (spec) {
+        const first = rows[cur.ids[0]] || [];
+        if (spec.temps) temps = first.map((x) => ({ t: x.t, cur: x.a && x.a.current_temperature, set: x.a && x.a.temperature }));
+        for (const id of cur.ids) rows[id] = (rows[id] || []).map((x) => ({ t: x.t, s: spec.on(x.s, x.a) ? "on" : "off" }));
+      }
       const periods = {};
       for (const id of cur.ids) periods[id] = onPeriods(rows[id] || [], r.fetchFrom, end);
       this._hist = { k: r.k, from: from, end: end, periods: periods,
-                     any: cur.ids.length > 1 ? unionPeriods(Object.values(periods), end) : periods[cur.ids[0]] };
+                     any: cur.ids.length > 1 ? unionPeriods(Object.values(periods), end) : periods[cur.ids[0]], temps: temps };
       this._hist.energy = await this._fetchEnergy(cur, r, rows, end);
     } catch (err) {
       console.warn("ENTITY-INSIGHTS: history failed", err);
@@ -984,24 +1222,52 @@ export class EntityInsightsDialog extends HTMLElement {
     this._viewKey = key;
     const f = this._fmt();
     const d = cur.domain;
+    // a thermostat that only heats (or only cools) says so
+    const modes = (st[0] && st[0].attributes.hvac_modes) || [];
+    const sw = d === "climate" && modes.length ? (!modes.includes("cool") ? "switch_heat" : !modes.includes("heat") ? "switch_cool" : "switch") : "switch";
     const labels = cur.labels || (cur.ids.length > 1
       ? cur.ids.map((id) => { const s = this._hass.states[id]; return (s && s.attributes.friendly_name) || id; })
-      : [this.t("switch", null, d)]);
-    let html = '<div class="box ' + esc(d) + '">';
+      : [this.t(sw, null, d)]);
+    // the domain as a class (d-light...): a bare "switch" would take the on / off toggle's own style
+    let html = '<div class="box d-' + esc(d) + '">';
     cur.ids.forEach((id, i) => {
       const s = this._hass.states[id];
-      const on = !!s && s.state === "on";
-      const since = s ? this.t(on ? "on_since" : "off_since", { t: f.hhmm(new Date(s.last_changed)) }, d) : this.t("no_entity");
+      const on = activeNow(s);
+      // since when: for a thing with an "on" of its own the state changes without it (a thermostat stays "heat"), so from
+      // the history - when its last run began or ended
+      let at = s && new Date(s.last_changed).getTime();
+      const ps = hist && hist.periods && hist.periods[id];
+      if (s && ACTIVE[d] && ps) { const last = ps[ps.length - 1]; at = on ? (last ? last.from : at) : last && !last.open ? last.to : at; }
+      const since = s ? this.t(on ? "on_since" : "off_since", { t: f.when(at) }, d) : this.t("no_entity");
       html += '<div class="row"><span class="name">' + esc(labels[i] || id) + ' <span class="since">' + esc(since) + "</span></span>" +
         (TOGGLE_DOMAINS.includes(id.split(".")[0]) && s ? '<button class="switch' + (on ? " on" : "") + '" data-id="' + esc(id) + '"></button>' : "") +
         "</div>" +
         // brightness: updated in place (_dimUpdate), not redrawn while held
-        (dimmable(s) ? '<div class="cv-slide dim"><input type="range" min="1" max="100" step="1" data-id="' + esc(id) +
-          '"><span class="pct"></span></div>' : "");
+        (levelOf(s) ? (() => { const lv = levelOf(s);
+          return '<div class="cv-slide dim">' + (lv.label ? '<span class="lbl">' + esc(this.t(lv.label)) + "</span>" : "") +
+            '<input type="range" min="' + lv.min + '" max="' + lv.max + '" step="' + lv.step + '" data-id="' + esc(id) +
+            '"><span class="pct"></span></div>'; })() : "");
     });
+    // a thermostat / boiler: what it is set to, with - / + (and the room's temperature next to it)
+    const s0 = this._hass.states[cur.ids[0]];
+    if (ACTIVE[d] && ACTIVE[d].temps && s0 && typeof s0.attributes.temperature === "number") {
+      const a = s0.attributes, step = a.target_temp_step || (d === "water_heater" ? 1 : 0.5);
+      html += '<div class="row setp"><span class="name">' + esc(this.t("set_to", null, d)) +
+        (typeof a.current_temperature === "number" ? ' <span class="since">' + esc(this.t("now_is", { v: f.num(a.current_temperature) }, d)) + "</span>" : "") +
+        '</span><button class="pm" data-set="' + (a.temperature - step) + '">−</button><b class="setv">' + f.num(a.temperature) + ' °C</b>' +
+        '<button class="pm" data-set="' + (a.temperature + step) + '">+</button></div>';
+    }
     html += this._chipsHtml(r) + this._statsBody(hist, () => this._onOffStatsHtml(hist, r, labels)) + "</div>";
     this._body.innerHTML = html;
     const box = this._body.querySelector(".box");
+    for (const b of box.querySelectorAll("[data-set]")) {
+      b.addEventListener("click", () => {
+        const v = Number(b.dataset.set), a = s0.attributes;
+        if ((typeof a.min_temp === "number" && v < a.min_temp) || (typeof a.max_temp === "number" && v > a.max_temp)) return;
+        box.querySelector(".setv").textContent = f.num(v) + " °C";  // at once; the state confirms it
+        this._hass.callService(d, "set_temperature", { entity_id: cur.ids[0], temperature: v });
+      });
+    }
     this._wireTips(box);
     this._wireChips(box);
     for (const b of box.querySelectorAll(".switch")) {
@@ -1014,8 +1280,9 @@ export class EntityInsightsDialog extends HTMLElement {
     for (const sl of box.querySelectorAll(".dim input")) {
       const pct = sl.parentElement.querySelector(".pct");
       sl.addEventListener("pointerdown", () => { this._drag = true; });
+      const span = () => { const mn = Number(sl.min), mx = Number(sl.max); return ((Number(sl.value) - mn) / (mx - mn || 1)) * 100; };
       sl.addEventListener("input", () => {
-        sl.style.setProperty("--p", sl.value + "%");
+        sl.style.setProperty("--p", span() + "%");
         pct.textContent = sl.value + "%";
       });
       sl.addEventListener("change", () => {
@@ -1023,25 +1290,26 @@ export class EntityInsightsDialog extends HTMLElement {
         // keep the new value on screen until HA confirms it (other state
         // changes in the house come sooner and would snap it back)
         this._dimPending = { id: sl.dataset.id, v: Number(sl.value), until: Date.now() + 4000 };
-        this._hass.callService("light", "turn_on", { entity_id: sl.dataset.id, brightness_pct: Number(sl.value) });
+        const lv = levelOf(this._hass.states[sl.dataset.id]);
+        if (lv) { const [dom, svc, data] = lv.set(Number(sl.value)); this._hass.callService(dom, svc, { entity_id: sl.dataset.id, ...data }); }
       });
       for (const ev of ["pointerup", "pointercancel"]) sl.addEventListener(ev, () => setTimeout(() => { this._drag = false; }, 0));
     }
     this._dimUpdate();
   }
 
-  // Brightness sliders follow the state, except the one under a finger.
+  // The sliders (brightness, speed, target, volume) follow the state, except the one under a finger.
   _dimUpdate() {
     if (this._drag) return;
     for (const sl of this._body.querySelectorAll(".dim input")) {
-      const st = this._hass.states[sl.dataset.id];
-      const on = !!st && st.state === "on";
-      const v = on && typeof st.attributes.brightness === "number" ? Math.max(1, Math.round(st.attributes.brightness / 2.55)) : 0;
+      const lv = levelOf(this._hass.states[sl.dataset.id]);
+      if (!lv) continue;
+      const got = lv.get(), v = got === null ? lv.min : got;
       const p = this._dimPending;
       if (p && p.id === sl.dataset.id && Date.now() < p.until && Math.abs(p.v - v) > 1) continue;
-      sl.value = Math.max(1, v);
-      sl.style.setProperty("--p", v + "%");
-      sl.parentElement.querySelector(".pct").textContent = on ? v + "%" : this.t("dim_off");
+      sl.value = v;
+      sl.style.setProperty("--p", (got === null ? 0 : ((v - lv.min) / (lv.max - lv.min || 1)) * 100) + "%");
+      sl.parentElement.querySelector(".pct").textContent = got === null ? this.t("dim_off") : v + "%";
     }
   }
 
@@ -1065,6 +1333,7 @@ export class EntityInsightsDialog extends HTMLElement {
     const max = Math.max(bk.unit === "h" ? 600e3 : 3600e3, ...vals.map((v) => v.ms));
     html += this._barsHtml(t("bars_" + bk.unit), bk, vals.map((v) => v.ms), max,
       vals.map((v) => (v.ms ? f.dur(v.ms) + " · " + v.count + "×" : t("tip_off"))));
+    if (hist.temps) html += this._tempsHtml(hist.temps, r, t);
 
     const hd = hourDays(any, r.a, r.b, now);
     if (!r.day) {
@@ -1113,11 +1382,11 @@ export class EntityInsightsDialog extends HTMLElement {
       let txt = n(kwh, kwh < 10 ? 2 : 1) + " kWh";
       if (typeof price === "number" && isFinite(price)) txt += " · " + n(kwh * price, 2) + (this._hass.config && this._hass.config.currency === "PLN" ? " zł" : " " + ((this._hass.config && this._hass.config.currency) || ""));
       if (en.prevOk && en.prev > 0) txt += " · " + f.change(en.now, en.prev);
-      facts.push([t("f_energy", { range: r.label.toLowerCase() }), esc(txt)]);
+      facts.push([t("f_energy", { range: lowerLabel(this.lang, r.label) }), esc(txt)]);
     }
     const rank = this._rankFor(tot.ms, r, (rows, rr) =>
       within(onPeriods(rows, rr.a, Date.now()), rr.a, rr.b, Date.now()).ms);
-    if (rank !== undefined) facts.push([t("f_rank", { range: r.label.toLowerCase() }), rank || t("counting")]);
+    if (rank !== undefined) facts.push([t("f_rank", { range: lowerLabel(this.lang, r.label) }), rank || t("counting")]);
     html += this._factsHtml(facts);
 
     const tl = this._timelineDay(r);
@@ -1141,6 +1410,88 @@ export class EntityInsightsDialog extends HTMLElement {
       esc((p.open ? t("is_on") : t("until", { t: f.hhmm(p.to) })) + which(p)) + '</span><span class="d">' + f.dur(len(p)) + "</span></div>").join("")
       : '<div class="muted">' + esc(t("none_on")) + "</div>");
     return html;
+  }
+
+  // A thermostat's / boiler's temperature over the range, the set one dashed (steps: each value held until the next).
+  _tempsHtml(rows, r, t) {
+    const now = Date.now(), a = r.a, b = Math.min(r.b, now);
+    const pts = rows.filter((x) => typeof x.cur === "number" || typeof x.set === "number");
+    if (!pts.length || b <= a) return "";
+    const W = 300, H = 90, all = pts.flatMap((x) => [x.cur, x.set]).filter((v) => typeof v === "number");
+    const lo = Math.floor(Math.min(...all) - 0.5), hi = Math.ceil(Math.max(...all) + 0.5);
+    const X = (ms) => ((Math.max(a, Math.min(b, ms)) - a) / (b - a) * W).toFixed(1);
+    const Y = (v) => (H - 6 - ((v - lo) / (hi - lo || 1)) * (H - 12)).toFixed(1);
+    const path = (k) => {
+      let d = "";
+      for (const x of pts) {
+        if (typeof x[k] !== "number") continue;
+        d += d ? "H" + X(x.t) + "V" + Y(x[k]) : "M" + X(x.t) + " " + Y(x[k]);
+      }
+      return d ? d + "H" + W : "";
+    };
+    const f = this._fmt();
+    return '<div class="sec">' + esc(t("t_title")) + '<span class="tleg"><i class="c"></i>' + esc(t("t_now")) +
+      ' <i class="s"></i>' + esc(t("t_set")) + "</span></div>" +
+      '<svg class="temps" viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none">' +
+      '<path class="ts" d="' + path("set") + '"/><path class="tc" d="' + path("cur") + '"/></svg>' +
+      '<div class="tax"><span>' + f.num(hi) + ' °C</span><span>' + f.num(lo) + " °C</span></div>";
+  }
+
+  // ---- A sensor of words: how long in each state -------------------------
+  async _fetchStates() {
+    const cur = this._cur;
+    const r = this._range();
+    const end = Date.now();
+    try {
+      const { rows, from } = await this._stateRows(cur.ids, r.fetchFrom, false, r);
+      if (this._cur !== cur || this._rangeKey !== r.k) return;
+      this._hist = { k: r.k, from: from, end: end, rows: rows[cur.ids[0]] || [] };
+    } catch (err) {
+      console.warn("ENTITY-INSIGHTS: history failed", err);
+      if (this._cur !== cur || this._rangeKey !== r.k) return;
+      this._hist = { k: r.k, error: true, influx: !r.recorder };
+    }
+    this._viewKey = null;
+    this._view();
+  }
+
+  _renderStates() {
+    const cur = this._cur;
+    const r = this._range();
+    let hist = this._hist;
+    if (hist && hist.k !== r.k) hist = null;
+    const s = this._hass.states[cur.ids[0]];
+    const key = (s ? s.state + s.last_changed : "-") + "#" + Math.floor(Date.now() / 60000) + "#" + r.k + "#" + (hist ? hist.end || "err" : "none") + "#" + this.lang;
+    if (key === this._viewKey) return;
+    if (!hist && this._keepStats(r)) return;
+    this._viewKey = key;
+    const f = this._fmt();
+    const word = (v) => esc(String(v).charAt(0).toUpperCase() + String(v).slice(1).replace(/_/g, " "));
+    let html = '<div class="box d-sensor"><div class="row"><span class="name">' + (s ? word(s.state) : esc(this.t("no_entity"))) +
+      (s ? ' <span class="since">' + esc(this.t("since", { t: f.hhmm(new Date(s.last_changed)) })) + "</span>" : "") + "</span></div>";
+    html += this._chipsHtml(r) + this._statsBody(hist, () => {
+      const now = Date.now(), rows = hist.rows, per = new Map();
+      rows.forEach((x, i) => {
+        const from = Math.max(x.t, r.a), to = Math.min(i + 1 < rows.length ? rows[i + 1].t : now, r.b, now);
+        if (to <= from || ["unknown", "unavailable"].includes(x.s)) return;
+        const p = per.get(x.s) || { ms: 0, n: 0 };
+        p.ms += to - from;
+        if (x.t >= r.a) p.n++;
+        per.set(x.s, p);
+      });
+      const list = [...per.entries()].sort((a, b) => b[1].ms - a[1].ms);
+      const total = list.reduce((a, [, p]) => a + p.ms, 0) || 1;
+      let out = '<div class="sec">' + esc(this.t("st_time", { range: lowerLabel(this.lang, r.label) })) + "</div>" + (list.length ? list.map(([v, p]) =>
+        '<div class="strow"><span class="n">' + word(v) + '</span><span class="bar"><i style="width:' + (p.ms / total * 100).toFixed(1) + '%"></i></span>' +
+        '<span class="d">' + f.dur(p.ms) + (p.n ? " · " + p.n + "×" : "") + "</span></div>").join("") : '<div class="muted">' + esc(this.t("st_none")) + "</div>");
+      const recent = rows.filter((x) => x.t >= r.a).slice(-15).reverse();
+      out += '<div class="sec">' + esc(this.t("st_recent")) + "</div>" + (recent.length ? recent.map((x) =>
+        '<div class="ev"><span class="w">' + f.when(x.t) + "</span><span>" + word(x.s) + "</span></div>").join("") : '<div class="muted">' + esc(this.t("st_none")) + "</div>");
+      return out;
+    }) + "</div>";
+    this._body.innerHTML = html;
+    const box = this._body.querySelector(".box");
+    this._wireChips(box);
   }
 
   // ---- Cover ------------------------------------------------------------
@@ -1333,7 +1684,7 @@ export class EntityInsightsDialog extends HTMLElement {
     const ext = settings.extensions.coverHistory(this, hist, r, tl) || { facts: [], spans: "", legend: "" };
     facts.push(...ext.facts);
     const rank = this._rankFor(moves.length, r, (rows, rr) => coverMoves(rows, rr.a).filter((m) => m.t < rr.b).length);
-    if (rank !== undefined) facts.push([t("f_rank_moves", { range: r.label.toLowerCase() }), rank || t("counting")]);
+    if (rank !== undefined) facts.push([t("f_rank_moves", { range: lowerLabel(this.lang, r.label) }), rank || t("counting")]);
     html += this._factsHtml(facts);
 
     // one day: closed (stronger = more shut), and what extensions add
@@ -1421,6 +1772,28 @@ function rankKey(cur, r) {
 export function dimmable(stateObj) {
   return !!stateObj && stateObj.entity_id.startsWith("light.") &&
     (stateObj.attributes.supported_color_modes || []).some((m) => m !== "onoff");
+}
+
+// What an entity can be set to, as a slider: a lamp's brightness, a fan's speed, a humidifier's target, a player's volume.
+// -> { min, max, step, label, get: % now (null: off), set: (v) => [domain, service, data] } | null
+export function levelOf(stateObj) {
+  if (!stateObj) return null;
+  const d = stateObj.entity_id.split(".")[0], a = stateObj.attributes, s = stateObj.state;
+  if (dimmable(stateObj)) return { min: 1, max: 100, step: 1, label: null,
+    get: () => (s === "on" && typeof a.brightness === "number" ? Math.max(1, Math.round(a.brightness / 2.55)) : null),
+    set: (v) => ["light", "turn_on", { brightness_pct: v }] };
+  if (d === "fan" && (typeof a.percentage === "number" || a.percentage_step)) {
+    const step = Number(a.percentage_step) > 0 ? Math.round(Number(a.percentage_step) * 100) / 100 : 1;
+    return { min: step, max: 100, step: step, label: "lv_speed",
+      get: () => (s === "on" && typeof a.percentage === "number" ? Math.round(a.percentage) : null),
+      set: (v) => ["fan", "set_percentage", { percentage: v }] };
+  }
+  if (d === "humidifier" && typeof a.humidity === "number") return { min: Number(a.min_humidity) || 0, max: Number(a.max_humidity) || 100, step: 1,
+    label: "lv_humidity", get: () => Math.round(a.humidity), set: (v) => ["humidifier", "set_humidity", { humidity: v }] };
+  if (d === "media_player" && typeof a.volume_level === "number") return { min: 0, max: 100, step: 1, label: "lv_volume",
+    get: () => (s === "off" || s === "standby" ? null : Math.round(a.volume_level * 100)),
+    set: (v) => ["media_player", "volume_set", { volume_level: v / 100 }] };
+  return null;
 }
 
 function isOn(hass, id) {
