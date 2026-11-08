@@ -29,7 +29,50 @@
 // See README.md for all options.
 
 export const NAME = "entity-insights";
-export const VERSION = "0.11.0";
+export const VERSION = "0.11.1";
+
+// The back button (Android app, browser) closes our dialog instead of
+// leaving the app. Opening a dialog pushes one history
+// entry with the same URL; back pops it and onBack() closes the dialog
+// (false = it only left full screen, the entry comes back). Closing with x
+// or the backdrop pops our entry ourselves - no empty steps left behind.
+// then(fn): what opens Home Assistant's own dialog right after ours waits
+// for that pop, or it would take HA's fresh entry with it.
+function backCloses(key, onBack) {
+  let token = null, pushed = false, backing = false, after = [], guard = null;
+  const push = () => { history.pushState({ [key]: token }, ""); pushed = true; };
+  const settle = () => {
+    backing = false;
+    clearTimeout(guard);
+    if (token && !pushed) push();
+    const fns = after; after = [];
+    fns.forEach((fn) => fn());
+  };
+  window.addEventListener("popstate", () => {
+    if (backing) { settle(); return; }
+    if (!token || !pushed || (history.state && history.state[key] === token)) return;
+    pushed = false;
+    if (onBack() === false && token) push();
+  });
+  return {
+    opened() {
+      if (token) return;
+      token = Math.random().toString(36).slice(2);
+      if (!backing) push();
+    },
+    closed() {
+      const t = token;
+      token = null;
+      if (!pushed) return;
+      pushed = false;
+      if (!history.state || history.state[key] !== t) return;
+      backing = true;
+      guard = setTimeout(settle, 600);
+      history.back();
+    },
+    then(fn) { if (backing) after.push(fn); else fn(); },
+  };
+}
 
 // ---- Strings -----------------------------------------------------------
 // "{x}" is replaced from vars. A key "light.xyz" overrides "xyz" for lights
@@ -784,6 +827,7 @@ export class EntityInsightsDialog extends HTMLElement {
     });
     this.shadowRoot.getElementById("close").addEventListener("click", () => this.close());
     this._onKey = (e) => { if (e.key === "Escape") this.close(); };
+    this._back = backCloses("entityInsights", () => this.close());
     this._rangeKey = null;
   }
 
@@ -857,6 +901,7 @@ export class EntityInsightsDialog extends HTMLElement {
 
   close() {
     if (!this.isOpen) return;
+    this._back.closed();
     this._dialog.classList.remove("open");
     window.removeEventListener("keydown", this._onKey);
     this._reset();
@@ -886,6 +931,7 @@ export class EntityInsightsDialog extends HTMLElement {
     this.shadowRoot.getElementById("close").title = this.t("close");
     this._dialog.classList.add("open");
     window.addEventListener("keydown", this._onKey);
+    this._back.opened();
     this._follow();
   }
 
@@ -914,7 +960,7 @@ export class EntityInsightsDialog extends HTMLElement {
     b.textContent = this.t("standard");
     b.addEventListener("click", () => {
       this.close();
-      openStandardMoreInfo(id);
+      this._back.then(() => openStandardMoreInfo(id));
     });
     foot.appendChild(b);
   }

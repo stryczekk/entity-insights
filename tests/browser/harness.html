@@ -122,6 +122,19 @@ if (shot) {
   await tick();
   check("Escape closes", !dialog().isOpen);
   check("unsubscribed on close", hass.calls.some((c) => c.unsubscribe === "subscribe_entities"));
+  await tick(300); // Escape took its history entry back
+
+  // the back button (Android app, browser) closes the dialog instead of leaving the page
+  api.open("light.kitchen_ceiling", hass);
+  check("back button: one history entry while open", history.state && history.state.entityInsights, JSON.stringify(history.state));
+  history.back();
+  await tick(300);
+  check("back button: back closes the dialog", !dialog().isOpen, dialog().isOpen);
+  api.open("light.kitchen_ceiling", hass);
+  await tick(50);
+  $("#close").click();
+  await tick(300);
+  check("back button: closing with x takes its history entry back", !(history.state && history.state.entityInsights), JSON.stringify(history.state));
 
   // 2. Two circuits of one lamp + dimmable light
   hass = fakeHass(home, "en");
@@ -247,8 +260,10 @@ if (shot) {
   };
   reached.length = 0;
   fire("light.porch");
+  check("back button: one history entry while open", history.state && history.state.entityInsights, JSON.stringify(history.state));
   check("takeover: a light opens the insights", dialog().isOpen && text("#title") === "Porch" && reached.length === 0, reached.join());
   $("#foot button").click();
+  await new Promise((r) => setTimeout(r, 300)); // HA's dialog waits until our history entry is gone
   check("'Entity settings' reaches Home Assistant's own dialog", !dialog().isOpen && reached.join() === "light.porch", reached.join());
   reached.length = 0;
   fire("cover.office");
