@@ -285,3 +285,38 @@ test("activeNow: the entity's own meaning of on", () => {
   assert.equal(m.activeNow(s("media_player.tv", "paused")), false);
   assert.equal(m.activeNow(s("light.a", "on")), true);
 });
+
+test("parseRequest: power sensors given by the caller (a floor plan's meter)", () => {
+  assert.deepEqual(m.parseRequest({ entity: "binary_sensor.door", power: "sensor.fridge_power" }).power, ["sensor.fridge_power"]);
+  assert.deepEqual(m.parseRequest({ entity: "climate.ac", power: ["sensor.a", "sensor.b", "sensor.a"] }).power, ["sensor.a", "sensor.b"]);
+  assert.equal(m.parseRequest({ entity: "climate.ac" }).power, null);
+  assert.equal(m.parseRequest({ entity: "climate.ac", power: "switch.plug" }).power, null);
+  assert.equal(m.parseRequest({ entity: "climate.ac", power: ["sensor.a", "<x>"] }).power, null);
+});
+
+test("wattsFactor: a meter in kW counts in W", () => {
+  assert.equal(m.wattsFactor({ attributes: { unit_of_measurement: "kW" } }), 1000);
+  assert.equal(m.wattsFactor({ attributes: { unit_of_measurement: "W" } }), 1);
+  assert.equal(m.wattsFactor(undefined), 1);
+});
+
+test("deviceExtras: the device of the entity or of its meter, not a relay board's", () => {
+  const st = (id, extra = {}) => ({ entity_id: id, state: "1", attributes: extra });
+  const hass = {
+    states: { "light.a": st("light.a"), "light.b": st("light.b"), "number.n": st("number.n"), "sensor.p": st("sensor.p", { device_class: "power" }),
+      "sensor.t": st("sensor.t"), "button.x": st("button.x"), "sensor.d": st("sensor.d"), "switch.s": st("switch.s") },
+    entities: { "light.a": { device_id: "board" }, "light.b": { device_id: "board" }, "number.n": { device_id: "board" },
+      "sensor.p": { device_id: "plug" }, "sensor.t": { device_id: "plug" }, "button.x": { device_id: "plug" },
+      "sensor.d": { device_id: "plug", entity_category: "diagnostic" }, "switch.s": { device_id: "plug", entity_category: "config" } },
+    devices: { plug: { name: "Plug" } },
+  };
+  for (const [id, e] of Object.entries(hass.entities)) e.entity_id = id;
+  assert.equal(m.deviceExtras(hass, ["light.a"], null), null);
+  const x = m.deviceExtras(hass, ["binary_sensor.door"], ["sensor.p"]);
+  assert.deepEqual(x, { name: "Plug", controls: ["switch.s"], more: [], readings: ["sensor.t"] });
+  // a rarely used switch folded under "more settings" by the request
+  assert.deepEqual(m.deviceExtras(hass, ["binary_sensor.door"], ["sensor.p"], ["switch.s"]),
+    { name: "Plug", controls: [], more: ["switch.s"], readings: ["sensor.t"] });
+  assert.deepEqual(m.parseRequest({ entity: "binary_sensor.door", more: ["switch.s", "bad id"] }).more, ["switch.s"]);
+  assert.equal(m.shortName({ states: { "sensor.t": { attributes: { friendly_name: "Plug inside temperature" } } } }, "sensor.t", "Plug"), "Inside temperature");
+});

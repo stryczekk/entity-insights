@@ -98,6 +98,8 @@ export const STRINGS = {
     f_night: "Turned on at night (0–5)", not_once: "not once", f_dark_days: "Days never on", of: "{n} of {d}",
     f_rank: "Place in the house ({range})", counting: "counting…",
     f_power: "Power", f_power_meter: "Power now (meter)", f_energy: "Energy ({range})",
+    dev_title: "The device", dev_more: "More settings ({n})", dev_hold: "hold 1 s to switch",
+    p_title: "Power drawn", p_bars_h: "Energy by hour", p_bars_d: "Energy per day", p_bars_w: "Energy per week",
     tl_today: "Today since midnight", tl_yesterday: "Yesterday",
     recent: "Recently turned on", is_on: "on", until: "until {t}", none_on: "Not on in this period.",
     yesterday_at: "yesterday {t}",
@@ -193,6 +195,8 @@ export const STRINGS = {
     f_dark_days: "Dni bez włączenia", "light.f_dark_days": "Dni bez świecenia", of: "{n} z {d}",
     f_rank: "Miejsce w domu ({range})", counting: "liczę…",
     f_power: "Moc", f_power_meter: "Moc teraz (licznik)", f_energy: "Prąd ({range})",
+    dev_title: "Urządzenie", dev_more: "Więcej ustawień ({n})", dev_hold: "przytrzymaj 1 s, żeby przełączyć",
+    p_title: "Pobór mocy", p_bars_h: "Prąd w godzinach", p_bars_d: "Prąd na dzień", p_bars_w: "Prąd na tydzień",
     tl_today: "Dziś od północy", tl_yesterday: "Wczoraj",
     recent: "Ostatnie włączenia", "light.recent": "Ostatnie zapalenia", is_on: "włączone", "light.is_on": "świeci",
     until: "do {t}", none_on: "Nie było włączone w tym okresie.", "light.none_on": "Nie świeciła w tym okresie.",
@@ -280,6 +284,8 @@ export const STRINGS = {
     f_night: "Nachts eingeschaltet (0–5)", not_once: "kein einziges Mal", f_dark_days: "Tage nie an", "light.f_dark_days": "Tage ohne Licht", of: "{n} von {d}",
     f_rank: "Platz im Haus ({range})", counting: "wird gezählt…",
     f_power: "Leistung", f_power_meter: "Leistung jetzt (Zähler)", f_energy: "Energie ({range})",
+    dev_title: "Das Gerät", dev_more: "Weitere Einstellungen ({n})", dev_hold: "1 s halten zum Schalten",
+    p_title: "Leistungsaufnahme", p_bars_h: "Energie nach Stunde", p_bars_d: "Energie pro Tag", p_bars_w: "Energie pro Woche",
     tl_today: "Heute seit Mitternacht", tl_yesterday: "Gestern",
     recent: "Zuletzt eingeschaltet", is_on: "an", "light.is_on": "leuchtet", until: "bis {t}", none_on: "In diesem Zeitraum nicht an.",
     "light.none_on": "Hat in diesem Zeitraum nicht geleuchtet.",
@@ -636,6 +642,11 @@ export function parseRequest(x) {
     // of a kWh (a number, or a sensor with it) - else from configure() / the invisible card, or a meter
     watts: wattsOf(x.watts, ids.length),
     price: priceOf(x.price),
+    // the power sensor(s) measuring the dialog's entities (W or kW, summed) - e.g. a floor plan knows a fridge's
+    // door is metered by the fridge's plug; else a meter on the entity's own device
+    power: powerOf(x.power),
+    // the device's settings to fold under "more settings" (rarely used: a fridge's sound, its night light)
+    more: [].concat(x.more || []).filter((e) => typeof e === "string" && validEntityId(e)),
   };
 }
 
@@ -643,6 +654,10 @@ const wattsOf = (w, n) => {
   if (typeof w === "number" && w >= 0) return Array(n).fill(w);
   if (Array.isArray(w) && w.length === n && w.every((v) => typeof v === "number" && v >= 0)) return w.slice();
   return null;
+};
+const powerOf = (p) => {
+  const l = [].concat(p === undefined || p === null ? [] : p);
+  return l.length && l.every((x) => typeof x === "string" && validEntityId(x) && x.startsWith("sensor.")) ? [...new Set(l)] : null;
 };
 const priceOf = (p) => (typeof p === "number" && p >= 0 ? p : typeof p === "string" && validEntityId(p) ? p : null);
 
@@ -659,6 +674,7 @@ export function energyWh(rows, a, b, now, watts, dim) {
   return wh;
 }
 // Energy (Wh) measured by a power sensor (rows [{t, s}] in W, each holding until the next) between a and b
+export const wattsFactor = (stateObj) => (stateObj && stateObj.attributes && stateObj.attributes.unit_of_measurement === "kW" ? 1000 : 1);
 export function meterWh(rows, a, b, now) {
   let wh = 0;
   for (let i = 0; i < rows.length; i++) {
@@ -680,6 +696,43 @@ export function powerSensorOf(hass, id) {
     return s && s.attributes.device_class === "power" && ["W", "kW"].includes(s.attributes.unit_of_measurement);
   });
   return m ? m.entity_id : null;
+}
+
+// The rest of the dialog's device: its settings (numbers, switches, lists) and readings (sensors) - a fridge's
+// set temperatures and quick freeze next to its door. The device of the entity, else of its meter (a door sensor
+// made in a template has no device; the fridge's plug meter has). Not for a device carrying more of the dialog's
+// own kind (a relay board's 32 lamps are not one lamp's device), not the diagnostic or hidden ones.
+export function deviceExtras(hass, ids, meters, fold) {
+  const ents = (hass && hass.entities) || {};
+  const own = ents[ids[0]] && ents[ids[0]].device_id;
+  const dev = own || (meters || []).map((id) => ents[id] && ents[id].device_id).find(Boolean);
+  if (!dev) return null;
+  const on = Object.values(ents).filter((e) => e.device_id === dev && !e.hidden && e.entity_category !== "diagnostic" && hass.states[e.entity_id]);
+  const dom = ids[0].split(".")[0];
+  if (own && on.filter((e) => e.entity_id.split(".")[0] === dom).length > ids.length) return null;
+  const skip = new Set([...ids, ...(meters || [])]);
+  const controls = [], more = [], readings = [];
+  for (const e of on) {
+    const id = e.entity_id, d = id.split(".")[0], st = hass.states[id];
+    if (skip.has(id) || st.state === "unavailable") continue;
+    if ((d === "number" || d === "switch") && fold && fold.includes(id)) more.push(id);
+    else if (d === "number" || d === "switch") controls.push(id);
+    else if (d === "select") more.push(id);
+    else if (d === "binary_sensor" || (d === "sensor" && !["energy", "power"].includes(st.attributes.device_class))) readings.push(id);
+  }
+  if (!controls.length && !more.length && !readings.length) return null;
+  const dv = hass.devices && hass.devices[dev];
+  const name = (dv && (dv.name_by_user || dv.name)) || "";
+  // the set values (numbers) first, then switches - the everyday ones before the settings (config)
+  const rank = (id) => (id.startsWith("number.") ? 0 : ents[id].entity_category === "config" ? 2 : 1);
+  const byName = (a, b) => rank(a) - rank(b) || shortName(hass, a, name).localeCompare(shortName(hass, b, name));
+  return { name: name, controls: controls.sort(byName), more: more.sort(byName), readings: readings.sort(byName).slice(0, 10) };
+}
+// An entity's name without its device's in front ("Fridge Freezer temperature" -> "Freezer temperature")
+export function shortName(hass, id, device) {
+  const s = hass.states[id], fn = String((s && s.attributes.friendly_name) || id);
+  const out = device && fn.toLowerCase().startsWith(device.toLowerCase() + " ") ? fn.slice(device.length + 1) : fn;
+  return out.charAt(0).toUpperCase() + out.slice(1);
 }
 
 // ---- The dialog ----------------------------------------------------------
@@ -722,6 +775,14 @@ const STYLE = `
   svg.temps path { fill: none; vector-effect: non-scaling-stroke; }
   svg.temps .tc { stroke: var(--ei-accent); stroke-width: 2; }
   svg.temps .ts { stroke: var(--ei-muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
+  .dsw.arming { outline: 2px solid var(--ei-accent); outline-offset: 2px; transition: outline-offset 1s; }
+  .dvmore summary { cursor: pointer; color: var(--ei-muted); font-size: 13px; margin: 8px 0 4px; }
+  .dvmore select { font: inherit; color: inherit; background: var(--ei-soft); border: 1px solid var(--ei-line); border-radius: 8px; padding: 4px 6px; max-width: 55%; }
+  .facts.dvr { margin-top: 6px; }
+  .pchart { position: relative; touch-action: pan-y; cursor: crosshair; }
+  .pchart .cross { position: absolute; top: 6px; bottom: 0; width: 0; border-left: 1px solid var(--primary-text-color, #c3cfdf); pointer-events: none; }
+  .pchart .cross[hidden] { display: none; }
+  svg.power .pw { fill: var(--ei-accent); fill-opacity: 0.35; stroke: var(--ei-accent); stroke-width: 1.5; }
   .tax { display: flex; flex-direction: column; justify-content: space-between; font-size: 11px; color: var(--ei-muted); margin-top: -90px;
     height: 90px; pointer-events: none; }
   .tleg { float: right; font-size: 12px; } .tleg i { display: inline-block; width: 14px; height: 0; vertical-align: middle; margin: 0 4px 0 10px; }
@@ -856,6 +917,8 @@ export class EntityInsightsDialog extends HTMLElement {
     if (!kind) return false;
     this._reset();
     this._cur = Object.assign(req, { kind: kind, domain: req.ids[0].split(".")[0] });
+    this._cur.extras = kind === "onoff" ? deviceExtras(this._hass, req.ids, req.power, req.more) : null;
+    this._moreOpen = false;
     this._title(req.name || (st && st.attributes.friendly_name) || req.ids[0]);
     this._footStandard(req.ids[0]);
     if (kind === "chart") return this._openChart();
@@ -951,7 +1014,7 @@ export class EntityInsightsDialog extends HTMLElement {
         if (ha && ha.hass) this._hass = ha.hass;
         if (this._cur === cur && this._view) this._view();
       }, 120);
-    }, { type: "subscribe_entities", entity_ids: cur.ids }).catch(() => null);
+    }, { type: "subscribe_entities", entity_ids: cur.ids.concat(cur.extras ? [...cur.extras.controls, ...cur.extras.more, ...cur.extras.readings] : []) }).catch(() => null);
   }
 
   _footStandard(id) {
@@ -1155,9 +1218,29 @@ export class EntityInsightsDialog extends HTMLElement {
       tip.style.top = (r.top - b.top) + "px";
     };
     const at = (e) => e.target.closest && e.target.closest("i[data-tip]");
-    box.addEventListener("pointerdown", (e) => show(at(e)));
-    box.addEventListener("pointerover", (e) => { if (e.pointerType === "mouse") show(at(e)); });
-    box.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse") show(null); });
+    // the power chart: a line where the pointer (or a finger) is, with the time and the power there
+    const chartAt = (e) => e.target.closest && e.target.closest(".pchart");
+    const hideCross = () => { for (const c of box.querySelectorAll(".pchart .cross")) c.hidden = true; };
+    const cross = (ch, e) => {
+      show(null);
+      const r = ch.getBoundingClientRect(), b = box.getBoundingClientRect();
+      const w = ch.dataset.w.split(",").map(Number);
+      const k = Math.max(0, Math.min(w.length - 1, Math.floor((e.clientX - r.left) / r.width * w.length)));
+      const x = (k + 0.5) / w.length * r.width;
+      const line = ch.querySelector(".cross");
+      line.hidden = false;
+      line.style.left = x + "px";
+      const f = this._fmt(), t0 = Number(ch.dataset.a) + k * Number(ch.dataset.step), t1 = t0 + Number(ch.dataset.step);
+      const when = ch.dataset.day === "1" ? f.hhmm(t0) + "–" + f.hhmm(t1) : f.date(t0) + " " + f.hhmm(t0) + "–" + f.hhmm(t1);
+      tip.textContent = when + " · " + w[k].toLocaleString(this.lang) + " W";
+      tip.style.display = "block";
+      tip.style.left = Math.min(Math.max(r.left - b.left + x, 70), b.width - 70) + "px";
+      tip.style.top = (r.top - b.top) + "px";
+    };
+    box.addEventListener("pointerdown", (e) => { const ch = chartAt(e); if (ch) cross(ch, e); else { hideCross(); show(at(e)); } });
+    box.addEventListener("pointermove", (e) => { const ch = chartAt(e); if (ch && (e.pointerType === "mouse" || e.buttons)) cross(ch, e); });
+    box.addEventListener("pointerover", (e) => { if (e.pointerType === "mouse" && !chartAt(e)) { hideCross(); show(at(e)); } });
+    box.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse") { hideCross(); show(null); } });
   }
 
   // "Place in the house": the entity against the others of its domain
@@ -1226,15 +1309,20 @@ export class EntityInsightsDialog extends HTMLElement {
   // when nothing says what they draw. A meter on the entity's own device first, then the power given.
   async _fetchEnergy(cur, r, rows, end) {
     const watts = cur.watts || (cur.ids.every((id) => settings.watts[id] !== undefined) ? cur.ids.map((id) => settings.watts[id]) : null);
-    const meters = cur.ids.map((id) => powerSensorOf(this._hass, id));
-    const out = { watts: watts, meter: meters.every(Boolean) ? meters : null, now: 0, prev: 0, prevOk: true };
+    const meters = cur.power || cur.ids.map((id) => powerSensorOf(this._hass, id));
+    const out = { watts: watts, meter: meters.every(Boolean) ? meters : null, now: 0, prev: 0, prevOk: true, end: end };
     if (!out.meter && !watts) return null;
     const span = (fn) => { out.now += fn(r.a, r.b); if (out.prevOk) out.prev += fn(r.prev[0], r.prev[1]); };
     try {
       if (out.meter) {
         const { rows: mr, from } = await this._stateRows(out.meter, r.fetchFrom, false, r);
         out.prevOk = from <= r.prev[0] + 60000;
-        for (const id of out.meter) span((a, b) => meterWh(mr[id] || [], a, b, end));
+        // in W, whatever the meter reports in; kept for the power chart and the energy bars
+        out.rows = out.meter.map((id) => {
+          const k = wattsFactor(this._hass.states[id]);
+          return (mr[id] || []).map((x) => ({ t: x.t, s: Number(x.s) * k }));
+        });
+        for (const rows of out.rows) span((a, b) => meterWh(rows, a, b, end));
       } else {
         // dimmable lights: their brightness too
         const dims = cur.ids.filter((id) => dimmable(this._hass.states[id]));
@@ -1258,7 +1346,7 @@ export class EntityInsightsDialog extends HTMLElement {
     const st = cur.ids.map((id) => this._hass.states[id]);
     const rank = rankCache.get(rankKey(cur, r));
     const key = st.map((s) => (s ? s.state + s.last_changed : "-")).join("|") + "#" + Math.floor(Date.now() / 60000) + "#" + r.k +
-      "#" + (hist ? hist.end || "err" : "none") + "#" + (rank ? rank.at : 0) + "#" + this.lang;
+      "#" + (hist ? hist.end || "err" : "none") + "#" + (rank ? rank.at : 0) + "#" + this.lang + "#" + this._extrasKey();
     if (key === this._viewKey) { this._dimUpdate(); return; }
     if (!hist && this._keepStats(r)) {
       for (const b of this._body.querySelectorAll(".switch")) b.classList.toggle("on", isOn(this._hass, b.dataset.id));
@@ -1303,9 +1391,11 @@ export class EntityInsightsDialog extends HTMLElement {
         '</span><button class="pm" data-set="' + (a.temperature - step) + '">−</button><b class="setv">' + f.num(a.temperature) + ' °C</b>' +
         '<button class="pm" data-set="' + (a.temperature + step) + '">+</button></div>';
     }
+    html += this._extrasHtml();
     html += this._chipsHtml(r) + this._statsBody(hist, () => this._onOffStatsHtml(hist, r, labels)) + "</div>";
     this._body.innerHTML = html;
     const box = this._body.querySelector(".box");
+    this._extrasWire(box);
     for (const b of box.querySelectorAll("[data-set]")) {
       b.addEventListener("click", () => {
         const v = Number(b.dataset.set), a = s0.attributes;
@@ -1316,7 +1406,7 @@ export class EntityInsightsDialog extends HTMLElement {
     }
     this._wireTips(box);
     this._wireChips(box);
-    for (const b of box.querySelectorAll(".switch")) {
+    for (const b of box.querySelectorAll(".switch:not(.dsw)")) {
       b.addEventListener("click", () => {
         const on = b.classList.contains("on");
         b.classList.toggle("on", !on);  // at once; the state confirms it
@@ -1342,6 +1432,97 @@ export class EntityInsightsDialog extends HTMLElement {
       for (const ev of ["pointerup", "pointercancel"]) sl.addEventListener(ev, () => setTimeout(() => { this._drag = false; }, 0));
     }
     this._dimUpdate();
+  }
+
+  _extrasKey() {
+    const x = this._cur && this._cur.extras;
+    if (!x) return "";
+    return [...x.controls, ...x.more, ...x.readings].map((id) => { const s = this._hass.states[id]; return s ? s.state : "-"; }).join("|");
+  }
+
+  _stateText(id) {
+    const s = this._hass.states[id];
+    if (!s) return "—";
+    if (typeof this._hass.formatEntityState === "function") { try { return this._hass.formatEntityState(s); } catch (e) { /* older frontends */ } }
+    const u = s.attributes.unit_of_measurement;
+    return s.state + (u ? " " + u : "");
+  }
+
+  // The device's settings and readings (see deviceExtras): a number with - / +, a switch held 1 s (quick freeze is
+  // not for a stray touch), lists folded under "more settings", readings as rows.
+  _extrasHtml() {
+    const x = this._cur.extras;
+    if (!x) return "";
+    const nm = (id) => esc(shortName(this._hass, id, x.name));
+    let html = '<div class="sec">' + esc(this.t("dev_title")) + (x.name ? ' <span class="since">' + esc(x.name) + "</span>" : "") + "</div>";
+    const control = (id) => {
+      const s = this._hass.states[id];
+      if (id.startsWith("number.")) {
+        return '<div class="row setp dvn"><span class="name">' + nm(id) + '</span><button class="pm" data-num="' + esc(id) + '" data-dir="-1">−</button>' +
+          '<b class="setv">' + esc(this._stateText(id)) + '</b><button class="pm" data-num="' + esc(id) + '" data-dir="1">+</button></div>';
+      }
+      return '<div class="row"><span class="name">' + nm(id) + ' <span class="since dvh"></span></span>' +
+        '<button class="switch dsw' + (s.state === "on" ? " on" : "") + '" data-id="' + esc(id) + '"></button></div>';
+    };
+    for (const id of x.controls) html += control(id);
+    if (x.more.length) {
+      html += '<details class="dvmore"' + (this._moreOpen ? " open" : "") + '><summary>' + esc(this.t("dev_more", { n: x.more.length })) + "</summary>";
+      for (const id of x.more) {
+        const s = this._hass.states[id];
+        if (!id.startsWith("select.")) { html += control(id); continue; }
+        html += '<div class="row"><span class="name">' + nm(id) + '</span><select data-sel="' + esc(id) + '">' +
+          (s.attributes.options || []).map((o) => '<option' + (o === s.state ? " selected" : "") + ' value="' + esc(o) + '">' +
+            esc(typeof this._hass.formatEntityState === "function" ? (() => { try { return this._hass.formatEntityState(s, o); } catch (e) { return o; } })() : o) + "</option>").join("") +
+          "</select></div>";
+      }
+      html += "</details>";
+    }
+    if (x.readings.length) {
+      html += '<div class="facts dvr">' + x.readings.map((id) => "<div><span>" + nm(id) + "</span><span>" + esc(this._stateText(id)) + "</span></div>").join("") + "</div>";
+    }
+    return html;
+  }
+
+  _extrasWire(box) {
+    if (!this._cur.extras) return;
+    for (const b of box.querySelectorAll("[data-num]")) {
+      b.addEventListener("click", () => {
+        const id = b.dataset.num, s = this._hass.states[id];
+        if (!s) return;
+        const a = s.attributes, step = Number(a.step) || 1, v0 = Number(s.state);
+        if (!isFinite(v0)) return;
+        const v = Math.round((v0 + Number(b.dataset.dir) * step) / step) * step;
+        if ((typeof a.min === "number" && v < a.min) || (typeof a.max === "number" && v > a.max)) return;
+        b.parentElement.querySelector(".setv").textContent = v.toLocaleString(this.lang) + (a.unit_of_measurement ? " " + a.unit_of_measurement : "");
+        this._hass.callService("number", "set_value", { entity_id: id, value: v });
+      });
+    }
+    for (const b of box.querySelectorAll(".dsw")) {
+      let timer = null;
+      const hint = b.parentElement.querySelector(".dvh");
+      const stop = () => { if (timer) { clearTimeout(timer); timer = null; b.classList.remove("arming"); } };
+      b.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        b.classList.add("arming");
+        timer = setTimeout(() => {
+          timer = null;
+          b.classList.remove("arming");
+          const on = b.classList.contains("on");
+          b.classList.toggle("on", !on);
+          if (navigator.vibrate) navigator.vibrate(30);
+          this._hass.callService("homeassistant", on ? "turn_off" : "turn_on", { entity_id: b.dataset.id });
+        }, 1000);
+      });
+      for (const ev of ["pointerup", "pointerleave", "pointercancel"]) b.addEventListener(ev, () => {
+        if (timer) { stop(); if (hint) { hint.textContent = this.t("dev_hold"); setTimeout(() => { hint.textContent = ""; }, 2500); } }
+      });
+      b.addEventListener("contextmenu", (e) => e.preventDefault());
+    }
+    // a switch flipped under "more settings" re-renders the dialog - it stays unfolded
+    for (const d of box.querySelectorAll(".dvmore")) d.addEventListener("toggle", () => { this._moreOpen = d.open; });
+    for (const sel of box.querySelectorAll("[data-sel]")) {
+      sel.addEventListener("change", () => this._hass.callService("select", "select_option", { entity_id: sel.dataset.sel, option: sel.value }));
+    }
   }
 
   // The sliders (brightness, speed, target, volume) follow the state, except the one under a finger.
@@ -1380,6 +1561,7 @@ export class EntityInsightsDialog extends HTMLElement {
     html += this._barsHtml(t("bars_" + bk.unit), bk, vals.map((v) => v.ms), max,
       vals.map((v) => (v.ms ? f.dur(v.ms) + " · " + v.count + "×" : t("tip_off"))));
     if (hist.temps) html += this._tempsHtml(hist.temps, r, t);
+    if (hist.energy && hist.energy.rows) html += this._powerHtml(hist.energy, r, bk, t);
 
     const hd = hourDays(any, r.a, r.b, now);
     if (!r.day) {
@@ -1419,7 +1601,7 @@ export class EntityInsightsDialog extends HTMLElement {
     if (en) {
       const n = (v, d) => v.toLocaleString(this.lang, { minimumFractionDigits: d, maximumFractionDigits: d });
       if (en.meter) {
-        const w = en.meter.reduce((a, id) => a + (Number((this._hass.states[id] || {}).state) || 0), 0);
+        const w = en.meter.reduce((a, id) => a + (Number((this._hass.states[id] || {}).state) || 0) * wattsFactor(this._hass.states[id]), 0);
         facts.push([t("f_power_meter"), n(w, w < 10 ? 1 : 0) + " W"]);
       } else facts.push([t("f_power"), en.watts.map((w) => n(w, w % 1 ? 1 : 0) + " W").join(" + ")]);
       const pr = cur.price ?? settings.price;
@@ -1481,6 +1663,41 @@ export class EntityInsightsDialog extends HTMLElement {
       '<svg class="temps" viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none">' +
       '<path class="ts" d="' + path("set") + '"/><path class="tc" d="' + path("cur") + '"/></svg>' +
       '<div class="tax"><span>' + f.num(hi) + ' °C</span><span>' + f.num(lo) + " °C</span></div>";
+  }
+
+  // What a meter measured over the range: the average power in narrow slices (so a fridge's compressor runs
+  // show, and a long range still fits) and the energy per hour / day / week, with its cost when a price is known.
+  _powerHtml(en, r, bk, t) {
+    const now = Date.now(), a = r.a, b = Math.min(r.b, now);
+    if (b - a < 60000) return "";
+    const wh = (x0, x1) => en.rows.reduce((sum, rows) => sum + meterWh(rows, x0, x1, en.end), 0);
+    const N = 150, W = 300, H = 70, step = (b - a) / N;
+    const avg = [];
+    for (let i = 0; i < N; i++) avg.push(wh(a + i * step, a + (i + 1) * step) / (step / 3600e3));
+    const max = Math.max(...avg);
+    if (!(max > 0)) return "";
+    const top = max < 10 ? Math.ceil(max) : max < 100 ? Math.ceil(max / 10) * 10 : Math.ceil(max / 100) * 100;
+    const X = (i) => (i / N * W).toFixed(1), Y = (v) => (H - (v / top) * (H - 4)).toFixed(1);
+    let d = "M0 " + H;
+    avg.forEach((v, i) => { d += "L" + X(i) + " " + Y(v) + "L" + X(i + 1) + " " + Y(v); });
+    d += "L" + W + " " + H + "Z";
+    const f = this._fmt();
+    // the slices for the line under the pointer: their start, length and average power
+    let html = '<div class="sec">' + esc(t("p_title")) + "</div>" +
+      '<div class="pchart" data-a="' + a + '" data-step="' + step + '" data-day="' + (r.day ? 1 : 0) + '" data-w="' +
+      avg.map((v) => (v < 10 ? v.toFixed(1) : Math.round(v))).join(",") + '">' +
+      '<svg class="temps power" viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none"><path class="pw" d="' + d + '"/></svg>' +
+      '<i class="cross" hidden></i></div>' +
+      '<div class="tax"><span>' + f.num(top) + " W</span><span>0 W</span></div>";
+    // the energy per bucket
+    const n = (v, dd) => v.toLocaleString(this.lang, { minimumFractionDigits: dd, maximumFractionDigits: dd });
+    const pr = this._cur.price ?? settings.price;
+    const price = typeof pr === "string" ? Number((this._hass.states[pr] || {}).state) : pr;
+    const cur = this._hass.config && this._hass.config.currency === "PLN" ? " zł" : " " + ((this._hass.config && this._hass.config.currency) || "");
+    const kwh = bk.list.map((x) => (x.b > x.a ? wh(x.a, Math.min(x.b, now)) / 1000 : 0));
+    const tips = kwh.map((v) => n(v, v < 10 ? 2 : 1) + " kWh" + (typeof price === "number" && isFinite(price) ? " · " + n(v * price, 2) + cur : ""));
+    html += this._barsHtml(t("p_bars_" + bk.unit), bk, kwh, Math.max(...kwh) || 1, tips);
+    return html;
   }
 
   // ---- A sensor of words: how long in each state -------------------------

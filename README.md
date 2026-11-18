@@ -107,6 +107,8 @@ hold_action:
 | `chart` | for sensors: options passed to Long-term Chart Card (without it installed, sensors open Home Assistant's own dialog) |
 | `watts` | the power of the entity in W (one number, or one per entity) — the dialog shows its energy over the range and what it cost |
 | `price` | the price of a kWh: a number, or a sensor that has it (e.g. `sensor.electricity_price`) |
+| `power` | the power sensor(s) measuring the entity (W or kW; several are added up) — when its meter is not on its own device |
+| `more` | the device's switches or set values to fold under *More settings* — the rarely used ones (a fridge's sound, its night light) |
 
 ### Energy and cost
 
@@ -126,7 +128,34 @@ hold_action:
 - An entity whose own device has a power sensor (a smart plug, a lamp with a meter) is measured by
   that sensor instead — no `watts` needed. A device with several lights or switches on it (a relay
   board) is not: its meter does not measure one of them.
+- With a meter (its own, or one given in `power`) the dialog also draws **the power it drew** over the range and
+  **the energy per hour / day / week**, each bar with its cost — a fridge's compressor runs, an air conditioner's
+  evening, a washer's cycles. This works for any entity with on / off history (a door, a thermostat, a switch...):
+
+  ```yaml
+  entity_insights:
+    entity: binary_sensor.fridge_door
+    power: sensor.fridge_power
+  ```
 - Powers and the price can also be set once for a dashboard, on the invisible card (below).
+
+### The device
+
+When the entity sits on a Home Assistant device with more on it, the dialog shows that device too — its set values
+with − / + (a fridge's and a freezer's temperature), its switches (held 1 s, so quick freeze is not switched by a stray
+touch), its lists folded under *More settings*, and its readings. A sensor made in a template has no device: given a
+`power` meter, the meter's device is used (a fridge's door with the fridge's plug). Diagnostic and hidden entities are
+left out, and so is a device carrying more of the dialog's own kind (a relay board's 32 lamps are not one lamp's device).
+Settings rarely touched can join the lists there with `more`:
+
+```yaml
+tap_action:
+  action: fire-dom-event
+  entity_insights:
+    entity: binary_sensor.fridge_door
+    power: sensor.fridge_power
+    more: [switch.fridge_sound, switch.fridge_night_light]
+```
 
 ### Instead of the entity dialog
 

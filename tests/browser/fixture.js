@@ -97,7 +97,9 @@ export function buildHome(lang = "en") {
     "light.hallway": { name: n.hall, rows: onOff(5, hall), dim: false },
     "light.porch": { name: n.porch, rows: onOff(6, porch), dim: false },
   };
-  const switches = { "switch.coffee_maker": { name: n.coffee, rows: onOff(7, coffee) } };
+  const switches = { "switch.coffee_maker": { name: n.coffee, rows: onOff(7, coffee) },
+    // a fridge's door: a template sensor (no device), metered by the fridge's own power sensor
+    "binary_sensor.fridge_door": { name: "Fridge door", rows: onOff(11, () => [[7, 0, 7, 2, 0.9, 1], [18, 0, 18, 3, 0.9, 2]]) } };
   const people = ["user-anna", "user-tom"];
   const covers = {
     "cover.living_room": { name: n.living, ...cover(8, (wd, r) => [
@@ -111,7 +113,10 @@ export function buildHome(lang = "en") {
     "cover.office": { name: n.office, ...cover(10, (wd, r) => [
       [8, 30, 100, "device"], ...(r() < 0.4 ? [[12, 0, 50, "device"], [15, 0, 100, "device"]] : []), [19, 0, 0, "device"]], people, n) },
   };
-  return { lights, switches, covers, people, names: n };
+  // a plug's meter under the coffee maker, in kW (the dialog counts it in W): 1.2 kW while it is on
+  const meters = { "sensor.coffee_maker_power": { unit: "kW", rows: switches["switch.coffee_maker"].rows.map(([t, st]) => [t, st === "on" ? "1.2" : "0"]) },
+    "sensor.fridge_power": { unit: "W", rows: switches["binary_sensor.fridge_door"].rows.map(([t, st]) => [t, st === "on" ? "45" : "3"]) } };
+  return { lights, switches, covers, meters, people, names: n };
 }
 
 const last = (rows) => rows[rows.length - 1];
@@ -141,14 +146,33 @@ export function fakeHass(home, language, { influx = true, now = Date.now() } = {
   states["sensor.living_room_temperature"] = { entity_id: "sensor.living_room_temperature", state: "21.4",
     attributes: { friendly_name: home.names.temp, unit_of_measurement: "°C", state_class: "measurement" } };
 
-  const rowsOf = (id) => (home.lights[id] || home.switches[id] || home.covers[id] || { rows: [] }).rows;
+  for (const [id, mt] of Object.entries(home.meters)) {
+    states[id] = { entity_id: id, state: last(mt.rows)[1], last_changed: lc(mt.rows), last_updated: lc(mt.rows),
+      attributes: { friendly_name: id, unit_of_measurement: mt.unit, device_class: "power", state_class: "measurement" } };
+  }
+  // the fridge's device: its settings and readings (and one diagnostic, one energy sensor - both left out)
+  const fridge = {
+    "number.fridge_setpoint": ["4", { friendly_name: "Fridge Fridge set temperature", min: 1, max: 7, step: 1, unit_of_measurement: "°C" }, "config"],
+    "switch.fridge_quick_freeze": ["off", { friendly_name: "Fridge Quick freeze" }, "config"],
+    "select.fridge_door_alarm": ["1 min", { friendly_name: "Fridge Door alarm", options: ["off", "1 min", "2 min"] }, "config"],
+    "sensor.fridge_freezer_temperature": ["-18", { friendly_name: "Fridge Freezer temperature", unit_of_measurement: "°C" }, null],
+    "sensor.fridge_selftest": ["ok", { friendly_name: "Fridge Self-test" }, "diagnostic"],
+    "sensor.fridge_energy": ["202", { friendly_name: "Fridge Energy", unit_of_measurement: "kWh", device_class: "energy" }, null],
+  };
+  const entities = { "sensor.fridge_power": { entity_id: "sensor.fridge_power", device_id: "fridge" } };
+  for (const [id, [st, at, cat]] of Object.entries(fridge)) {
+    states[id] = { entity_id: id, state: st, last_changed: new Date(now - DAY).toISOString(), last_updated: new Date(now - DAY).toISOString(), attributes: at };
+    entities[id] = { entity_id: id, device_id: "fridge", entity_category: cat };
+  }
+  const rowsOf = (id) => (home.lights[id] || home.switches[id] || home.covers[id] || home.meters[id] || { rows: [] }).rows;
 
   const hass = {
     calls,
     language,
     locale: { language },
     states,
-    entities: {},
+    entities,
+    devices: { fridge: { id: "fridge", name: "Fridge" } },
     config: { components: influx ? ["influx_proxy", "history", "logbook"] : ["history", "logbook"], time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone },
     connection: {
       subscribeEvents: async (cb, type) => { calls.push({ subscribe: type }); return () => calls.push({ unsubscribe: type }); },

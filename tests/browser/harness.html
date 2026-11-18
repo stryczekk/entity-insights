@@ -94,9 +94,77 @@ if (shot) {
   check("history loads (with watts)", await loaded());
   check("power and energy with its cost", /Power\s*18 W/.test(text(".facts")) && /Energy[^)]*\)\s*[\d.,]+ kWh · [\d.,]+/.test(text(".facts")), text(".facts"));
 
+  // a meter given by the caller (a floor plan knows which plug measures what): power drawn and energy per bucket
+  api.close();
+  check("opens with a meter", api.open({ entity: "switch.coffee_maker", power: "sensor.coffee_maker_power", price: 1.12 }, hass) === true);
+  check("history loads (with a meter)", await loaded());
+  check("meter: power now in W (from kW)", /Power now \(meter\)\s*(1[ ,.]?200|0([.,]0)?) W/.test(text(".facts")), text(".facts"));
+  check("meter: power chart drawn", !!$("svg.power path") && $("svg.power path").getAttribute("d").length > 100, $("svg.power") && $("svg.power path").getAttribute("d").length);
+  check("meter: energy bars per day for 14 days", $$(".bars")[1] && $$(".bars")[1].querySelectorAll("i").length === 14, $$(".bars").length);
+  check("meter: energy bar tip in kWh with cost", /kWh · [\d.,]+/.test($$(".bars")[1].querySelector("i:last-child").dataset.tip), $$(".bars")[1].querySelector("i:last-child").dataset.tip);
+  {
+    const ch = $(".pchart"), rc = ch.getBoundingClientRect();
+    ch.querySelector("svg").dispatchEvent(new PointerEvent("pointermove", { clientX: rc.left + rc.width * 0.5, clientY: rc.top + 30, pointerType: "mouse", bubbles: true, composed: true }));
+    const tipEl = root().querySelector(".tip");
+    check("meter: a line under the pointer with the time and the power", !ch.querySelector(".cross").hidden && tipEl.style.display === "block" &&
+      /\d+\.\d+ \d{2}:\d{2}–\d{2}:\d{2} · [\d.,]+ W$/.test(tipEl.textContent), tipEl.textContent);
+    ch.dispatchEvent(new PointerEvent("pointerleave", { pointerType: "mouse", bubbles: false }));
+  }
+  check("meter: energy of the range from the meter", /Energy[^)]*\)\s*[\d.,]+ kWh · [\d.,]+/.test(text(".facts")), text(".facts"));
+  api.close();
+  // the device's settings and readings: a fridge's door (a template, no device) found through its meter
+  check("opens the fridge door with its meter", api.open({ entity: "binary_sensor.fridge_door", power: "sensor.fridge_power" }, hass) === true);
+  check("history loads (fridge)", await loaded());
+  {
+    const secs = $$(".sec").map((x) => x.textContent);
+    check("device: a section named after it", secs.some((x) => /^The device\s*Fridge$/.test(x)), secs.join(" | "));
+    check("device: the set temperature with - / +", /Fridge set temperature/.test(text(".dvn")) && $$(".dvn .pm").length === 2, text(".dvn"));
+    const n0 = hass.calls.length;
+    $$(".dvn .pm")[1].click();
+    const nc = hass.calls.slice(n0).find((c) => c.service === "set_value");
+    check("device: + sets the number one step up", nc && nc.domain === "number" && nc.data.value === 5 && nc.data.entity_id === "number.fridge_setpoint", JSON.stringify(nc));
+    const sw = $(".dsw");
+    check("device: quick freeze as a switch", sw && sw.dataset.id === "switch.fridge_quick_freeze");
+    const n1 = hass.calls.length;
+    sw.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })); sw.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+    check("device: a short tap does not switch it, says to hold", !hass.calls.slice(n1).some((c) => c.service) && /hold 1 s/.test(sw.parentElement.textContent), sw.parentElement.textContent);
+    sw.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 1150));
+    sw.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+    const hc = hass.calls.slice(n1).find((c) => c.service);
+    check("device: held 1 s it switches", hc && hc.service === "turn_on" && hc.data.entity_id === "switch.fridge_quick_freeze", JSON.stringify(hc));
+    check("device: lists folded under more settings", /More settings \(1\)/.test(text(".dvmore summary")), text(".dvmore summary"));
+    const sel = $("[data-sel]"); sel.value = "2 min"; sel.dispatchEvent(new Event("change"));
+    const sc = hass.calls.find((c) => c.service === "select_option");
+    check("device: a list sets its option", sc && sc.data.option === "2 min" && sc.data.entity_id === "select.fridge_door_alarm", JSON.stringify(sc));
+    const rd = text(".dvr");
+    check("device: readings, without diagnostics and energy", /Freezer temperature\s*-18 °C/.test(rd) && !/Self-test|Energy/.test(rd), rd);
+    check("device: subscribed to its entities too", hass.calls.some((c) => c.subscribe === "subscribe_entities" && (c.entity_ids || []).includes("number.fridge_setpoint")));
+  }
+  api.close();
+  // more: a rarely used switch folded under "more settings", which stays unfolded across a re-render
+  check("opens the fridge door with more:", api.open({ entity: "binary_sensor.fridge_door", power: "sensor.fridge_power", more: ["switch.fridge_quick_freeze"] }, hass) === true);
+  check("history loads (fridge, more)", await loaded());
+  {
+    check("more: the switch left the top list", !$$(".dsw").some((b) => !b.closest(".dvmore")), String($$(".dsw").length));
+    check("more: counted under more settings", /More settings \(2\)/.test(text(".dvmore summary")), text(".dvmore summary"));
+    check("more: the switch inside it", !!$(".dvmore .dsw[data-id='switch.fridge_quick_freeze']"));
+    const d = $(".dvmore"); d.open = true; d.dispatchEvent(new Event("toggle"));
+    const qf = hass.states["switch.fridge_quick_freeze"];
+    hass.states["switch.fridge_quick_freeze"] = Object.assign({}, qf, { state: qf.state === "on" ? "off" : "on" });
+    api.hass = hass;
+    await new Promise((r) => setTimeout(r, 400));
+    check("more: stays unfolded after a re-render", !!$(".dvmore") && $(".dvmore").open && $(".dvmore") !== d);
+    hass.states["switch.fridge_quick_freeze"] = qf;
+  }
+  api.close();
+  check("reopens the light", api.open({ entity: "light.kitchen_ceiling", watts: 18, price: 1.12 }, hass) === true);
+  check("history loads (light again)", await loaded());
+
   // switch -> service call, no real device
+  const nSvc = hass.calls.length;
   $(".switch").click();
-  const svc = hass.calls.filter((c) => c.service);
+  const svc = hass.calls.slice(nSvc).filter((c) => c.service);
   check("switch calls homeassistant.turn_on/off for this entity",
         svc.length === 1 && svc[0].domain === "homeassistant" && svc[0].data.entity_id === "light.kitchen_ceiling", JSON.stringify(svc));
 
