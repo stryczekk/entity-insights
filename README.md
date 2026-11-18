@@ -137,6 +137,8 @@ hold_action:
     entity: binary_sensor.fridge_door
     power: sensor.fridge_power
   ```
+
+  <img src="docs/screenshot-fridge-en.png" width="32%" alt="A fridge: the power its compressor drew over 7 days and the energy per day">
 - Powers and the price can also be set once for a dashboard, on the invisible card (below).
 
 ### The device

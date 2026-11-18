@@ -24,7 +24,7 @@ echo "$OUT"
 if [ "$1" = "--shots" ]; then
   mkdir -p docs
   # a phone: 390 x 844 CSS px at 2x
-  for s in "light en 14" "cover en 30" "lamp en 90"; do
+  for s in "light en 14" "cover en 30" "lamp en 90" "fridge en 7"; do
     set -- $s
     "$CHROME" $FLAGS --window-size=390,844 --force-device-scale-factor=2 --screenshot="docs/screenshot-$1-$2.png" \
       "$URL?shot=$1&lang=$2&range=$3" >/dev/null 2>&1

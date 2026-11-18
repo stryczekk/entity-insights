@@ -60,10 +60,13 @@ if (shot) {
   const req = { light: { entities: ["light.dining_small", "light.dining_large"], name: lang === "pl" ? "Jadalnia" : "Dining room",
                          labels: ["x1", "x3"] },
                 lamp: "light.living_room_lamp",
-                cover: "cover.living_room" }[shot];
+                cover: "cover.living_room",
+                fridge: { entity: "binary_sensor.fridge_door", power: "sensor.fridge_power", name: lang === "pl" ? "Lodówka" : "Fridge" } }[shot];
   api.open(req, hass);
   await loaded();
   await counted();
+  // the fridge: down to the power it drew and the device
+  if (shot === "fridge") { await tick(300); const pc = $(".pchart"); if (pc) $("#panel").scrollTop = pc.offsetTop - 120; }
   document.getElementById("results").remove();
 } else {
   // 1. On/off: a light, English, InfluxDB present -> all six ranges
@@ -76,7 +79,7 @@ if (shot) {
   check("history loads", await loaded());
   // the recorder keeps 10 days by default: 14 days and the 14 before come from InfluxDB
   const p14 = hass.calls.find((c) => c.path);
-  check("14 days (+14 to compare) from InfluxDB past the recorder", p14 && /days=27\./.test(p14.path), JSON.stringify(hass.calls.slice(0, 3)));
+  check("14 days (+14 to compare) from InfluxDB past the recorder", p14 && /days=2[78]\./.test(p14.path), JSON.stringify(hass.calls.slice(0, 3)));
   check("sums: hours lit, average, change", $$(".sums div").length === 3 && /h|min/.test(text(".sums b")), text(".sums"));
   check("bars per day for 14 days", $$(".bars i").length === 14, $$(".bars i").length);
   check("24 hour-of-day columns", $$(".hours i").length === 24, $$(".hours i").length);

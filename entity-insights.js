@@ -29,7 +29,7 @@
 // See README.md for all options.
 
 export const NAME = "entity-insights";
-export const VERSION = "0.11.1";
+export const VERSION = "0.12.0";
 
 // The back button (Android app, browser) closes our dialog instead of
 // leaving the app. Opening a dialog pushes one history
@@ -1457,6 +1457,7 @@ export class EntityInsightsDialog extends HTMLElement {
     let html = '<div class="sec">' + esc(this.t("dev_title")) + (x.name ? ' <span class="since">' + esc(x.name) + "</span>" : "") + "</div>";
     const control = (id) => {
       const s = this._hass.states[id];
+      if (!s) return "";  // gone while the dialog is open
       if (id.startsWith("number.")) {
         return '<div class="row setp dvn"><span class="name">' + nm(id) + '</span><button class="pm" data-num="' + esc(id) + '" data-dir="-1">−</button>' +
           '<b class="setv">' + esc(this._stateText(id)) + '</b><button class="pm" data-num="' + esc(id) + '" data-dir="1">+</button></div>';
@@ -1470,6 +1471,7 @@ export class EntityInsightsDialog extends HTMLElement {
       for (const id of x.more) {
         const s = this._hass.states[id];
         if (!id.startsWith("select.")) { html += control(id); continue; }
+        if (!s) continue;
         html += '<div class="row"><span class="name">' + nm(id) + '</span><select data-sel="' + esc(id) + '">' +
           (s.attributes.options || []).map((o) => '<option' + (o === s.state ? " selected" : "") + ' value="' + esc(o) + '">' +
             esc(typeof this._hass.formatEntityState === "function" ? (() => { try { return this._hass.formatEntityState(s, o); } catch (e) { return o; } })() : o) + "</option>").join("") +

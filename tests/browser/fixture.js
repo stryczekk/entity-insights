@@ -19,6 +19,19 @@ function rng(seed) {
 const midnight = (t) => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
 const at = (day, h, m = 0) => day + (h * 60 + m) * 60000;
 
+// a fridge's compressor over the last `days`: runs of 15-30 min at 60-90 W, pauses of 25-50 min at 2 W -> rows [t, W]
+function compressor(seed, days) {
+  const r = rng(seed), rows = [];
+  for (let t = midnight(Date.now()) - days * DAY; t < Date.now(); ) {
+    rows.push([t, String(60 + Math.round(r() * 30))]);
+    t += (15 + r() * 15) * 60000;
+    if (t >= Date.now()) break;
+    rows.push([t, "2"]);
+    t += (25 + r() * 25) * 60000;
+  }
+  return rows;
+}
+
 // on/off periods per day -> rows [t, state]
 function onOff(seed, plan) {
   const r = rng(seed);
@@ -115,7 +128,7 @@ export function buildHome(lang = "en") {
   };
   // a plug's meter under the coffee maker, in kW (the dialog counts it in W): 1.2 kW while it is on
   const meters = { "sensor.coffee_maker_power": { unit: "kW", rows: switches["switch.coffee_maker"].rows.map(([t, st]) => [t, st === "on" ? "1.2" : "0"]) },
-    "sensor.fridge_power": { unit: "W", rows: switches["binary_sensor.fridge_door"].rows.map(([t, st]) => [t, st === "on" ? "45" : "3"]) } };
+    "sensor.fridge_power": { unit: "W", rows: compressor(12, 30) } };
   return { lights, switches, covers, meters, people, names: n };
 }
 
